@@ -36,9 +36,9 @@ export default function Clients() {
       <div className="flex gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-tertiary" />
-          <input placeholder="Search clients..." className="w-full h-10 pl-9 pr-3 rounded-lg bg-card border border-white/10 text-sm focus:outline-none focus:border-primary/40" />
+          <input placeholder="Search clients..." className="glass-input w-full h-10 pl-9 pr-3 text-sm" />
         </div>
-        <select className="h-10 px-3 rounded-lg bg-card border border-white/10 text-sm focus:outline-none focus:border-primary/40">
+        <select className="glass-select h-10 px-3 rounded-[10px] text-sm focus:outline-none focus:border-[rgba(249,115,22,0.5)]">
           <option>All types</option><option>Individual</option><option>Company</option><option>LLP</option>
         </select>
       </div>
@@ -79,18 +79,18 @@ export default function Clients() {
               ].map(([l, t, p]) => (
                 <div key={l}>
                   <label className="block text-xs font-medium text-secondary mb-1.5">{l}</label>
-                  <input type={t} placeholder={p as string} className="w-full h-10 px-3 rounded-lg bg-card-elevated border border-white/10 text-sm focus:outline-none focus:border-primary/40" />
+                  <input type={t} placeholder={p as string} className="glass-input w-full h-10 px-3 text-sm" />
                 </div>
               ))}
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1.5">Type</label>
-                <select className="w-full h-10 px-3 rounded-lg bg-card-elevated border border-white/10 text-sm">
+                <select className="glass-select w-full h-10 px-3 rounded-[10px] text-sm">
                   <option>Individual</option><option>Company</option><option>LLP</option><option>Partnership</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1.5">Country</label>
-                <select className="w-full h-10 px-3 rounded-lg bg-card-elevated border border-white/10 text-sm">
+                <select className="glass-select w-full h-10 px-3 rounded-[10px] text-sm">
                   <option>🇮🇳 India</option><option>🇬🇧 UK</option><option>🇺🇸 US</option>
                 </select>
               </div>
