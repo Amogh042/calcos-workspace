@@ -159,7 +159,7 @@ export default function Calculators() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search in category..."
-            className="w-full h-9 pl-9 pr-3 rounded-lg bg-card border border-white/[0.08] text-sm focus:outline-none focus:border-primary/40"
+            className="glass-input w-full h-9 pl-9 pr-3 text-sm"
           />
         </div>
       </div>

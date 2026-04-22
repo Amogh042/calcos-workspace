@@ -139,7 +139,7 @@ export default function CalcAI() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask CalcAI anything..."
-                className="w-full h-12 pl-4 pr-14 rounded-xl bg-card border border-white/10 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 text-sm"
+                className="glass-input w-full h-12 pl-4 pr-14 text-sm"
               />
               <button
                 type="submit"
