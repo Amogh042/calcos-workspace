@@ -34,6 +34,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   materiality: MaterialityCalc,
   "stamp-duty": StampDutyCalc,
   wacc: WACCCalc,
+  dcf: DCFCalc,
+  "sample-size": SampleSizeCalc,
+  "80c-planner": Section80CCalc,
+  "balance-transfer": BalanceTransferCalc,
+  "dividend-tax": DividendTaxCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -62,6 +67,11 @@ const titleMap: Record<string, string> = {
   materiality: "Audit Materiality Calculator",
   "stamp-duty": "Stamp Duty Calculator",
   wacc: "WACC Calculator",
+  dcf: "DCF Valuation",
+  "sample-size": "Audit Sample Size Calculator",
+  "80c-planner": "Section 80C / 80D Deduction Planner",
+  "balance-transfer": "Loan Balance Transfer Calculator",
+  "dividend-tax": "Dividend Tax Calculator",
 };
 
 const categoryMap: Record<string, string> = {
@@ -90,6 +100,11 @@ const categoryMap: Record<string, string> = {
   materiality: "audit",
   "stamp-duty": "realestate",
   wacc: "valuation",
+  dcf: "valuation",
+  "sample-size": "audit",
+  "80c-planner": "tax",
+  "balance-transfer": "loans",
+  "dividend-tax": "tax",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -2836,6 +2851,604 @@ function WACCCalc() {
 
           <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
             A project is viable if its return exceeds WACC of {formatPct(result.wacc)}.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function DCFCalc() {
+  const [cashFlows, setCashFlows] = useState<string[]>(["0", "250000", "300000", "360000", "420000", "480000"]);
+  const [terminalGrowth, setTerminalGrowth] = useState("4");
+  const [discountRate, setDiscountRate] = useState("12");
+  const [netDebt, setNetDebt] = useState("0");
+  const [sharesOutstanding, setSharesOutstanding] = useState("0");
+  const [result, setResult] = useState({
+    enterpriseValue: 0,
+    equityValue: 0,
+    pricePerShare: 0,
+    terminalValue: 0,
+    pvTerminalValue: 0,
+    terminalPercent: 0,
+    rows: [] as Array<{ year: number; fcf: number; pv: number }>,
+  });
+
+  useEffect(() => {
+    const flows = cashFlows.map((value) => toNum(value));
+    const g = toNum(terminalGrowth) / 100;
+    const r = toNum(discountRate) / 100;
+    const debt = toNum(netDebt);
+    const shares = toNum(sharesOutstanding);
+
+    const rows: Array<{ year: number; fcf: number; pv: number }> = [];
+    let pvOfFcfs = 0;
+
+    flows.forEach((fcf, year) => {
+      const pv = fcf / (1 + r) ** year;
+      pvOfFcfs += pv;
+      rows.push({ year, fcf, pv });
+    });
+
+    const lastFcf = flows.length ? flows[flows.length - 1] : 0;
+    const n = Math.max(0, flows.length - 1);
+    const terminalValue = r > g ? (lastFcf * (1 + g)) / (r - g) : 0;
+    const pvTerminalValue = terminalValue / (1 + r) ** n;
+
+    const enterpriseValue = pvOfFcfs + pvTerminalValue;
+    const equityValue = enterpriseValue - debt;
+    const pricePerShare = shares > 0 ? equityValue / shares : 0;
+    const terminalPercent = enterpriseValue > 0 ? (pvTerminalValue / enterpriseValue) * 100 : 0;
+
+    setResult({
+      enterpriseValue,
+      equityValue,
+      pricePerShare,
+      terminalValue,
+      pvTerminalValue,
+      terminalPercent,
+      rows,
+    });
+  }, [cashFlows, terminalGrowth, discountRate, netDebt, sharesOutstanding]);
+
+  const updateCashFlow = (index: number, value: string) => {
+    setCashFlows((prev) => prev.map((item, i) => (i === index ? value : item)));
+  };
+
+  const addYear = () => {
+    if (cashFlows.length >= 10) return;
+    setCashFlows((prev) => [...prev, "0"]);
+  };
+
+  return (
+    <CalculatorShell
+      title="DCF Valuation"
+      subtitle="Discounted cash flow enterprise and equity valuation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+            <button
+              onClick={addYear}
+              disabled={cashFlows.length >= 10}
+              className="px-3 py-1.5 rounded-md text-xs font-medium bg-gradient-orange text-white disabled:opacity-50"
+            >
+              Add Year
+            </button>
+          </div>
+
+          {cashFlows.map((value, index) => (
+            <MoneyInput
+              key={`dcf-year-${index}`}
+              label={`Year ${index} Free Cash Flow`}
+              value={value}
+              onChange={(val) => updateCashFlow(index, val)}
+            />
+          ))}
+
+          <NumberInput label="Terminal Growth Rate (%)" value={terminalGrowth} onChange={setTerminalGrowth} />
+          <NumberInput label="Discount Rate / WACC (%)" value={discountRate} onChange={setDiscountRate} />
+          <MoneyInput label="Net Debt (Optional)" value={netDebt} onChange={setNetDebt} />
+          <NumberInput label="Shares Outstanding (Optional)" value={sharesOutstanding} onChange={setSharesOutstanding} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Enterprise Value" value={formatINR(result.enterpriseValue)} green />
+            <MiniStat label="Equity Value" value={formatINR(result.equityValue)} />
+            <MiniStat label="Price Per Share" value={formatINR(result.pricePerShare)} />
+            <MiniStat label="Terminal Value Contribution" value={formatPct(result.terminalPercent)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-xs text-secondary">
+            Terminal Value: {formatINR(result.terminalValue)} | PV of Terminal Value: {formatINR(result.pvTerminalValue)}
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">PV Breakdown</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">FCF</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Present Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">Year {row.year}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.fcf)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.pv)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SampleSizeCalc() {
+  const [populationSize, setPopulationSize] = useState("10000");
+  const [confidenceLevel, setConfidenceLevel] = useState<"90" | "95" | "99">("95");
+  const [tolerableErrorRate, setTolerableErrorRate] = useState("5");
+  const [expectedErrorRate, setExpectedErrorRate] = useState("2");
+  const [populationValue, setPopulationValue] = useState("50000000");
+  const [tolerableMisstatement, setTolerableMisstatement] = useState("1000000");
+  const [result, setResult] = useState({
+    sampleSize: 0,
+    rawN: 0,
+    adjustedN: 0,
+    musSize: 0,
+    zValue: 1.96,
+  });
+
+  useEffect(() => {
+    const N = Math.max(1, toNum(populationSize));
+    const e = Math.max(0.0001, toNum(tolerableErrorRate) / 100);
+    const p = Math.min(0.9999, Math.max(0.0001, toNum(expectedErrorRate) / 100));
+    const zMap: Record<"90" | "95" | "99", number> = { "90": 1.645, "95": 1.96, "99": 2.576 };
+    const zValue = zMap[confidenceLevel];
+
+    const rawN = (zValue ** 2 * p * (1 - p)) / (e ** 2);
+    const adjustedN = rawN / (1 + (rawN - 1) / N);
+    const sampleSize = Math.ceil(adjustedN);
+
+    const popValue = toNum(populationValue);
+    const tolMiss = toNum(tolerableMisstatement);
+    const musSize = tolMiss > 0 ? popValue / (tolMiss / zValue) : 0;
+
+    setResult({
+      sampleSize,
+      rawN,
+      adjustedN,
+      musSize,
+      zValue,
+    });
+  }, [populationSize, confidenceLevel, tolerableErrorRate, expectedErrorRate, populationValue, tolerableMisstatement]);
+
+  return (
+    <CalculatorShell
+      title="Audit Sample Size Calculator"
+      subtitle="Attribute sampling and MUS estimate"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <NumberInput label="Population Size" value={populationSize} onChange={setPopulationSize} />
+
+          <Field label="Confidence Level">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["90", "95", "99"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setConfidenceLevel(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    confidenceLevel === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}%
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <NumberInput label="Tolerable Error Rate (%)" value={tolerableErrorRate} onChange={setTolerableErrorRate} />
+          <NumberInput label="Expected Error Rate (%)" value={expectedErrorRate} onChange={setExpectedErrorRate} />
+          <MoneyInput label="Population Value (for MUS)" value={populationValue} onChange={setPopulationValue} />
+          <MoneyInput label="Tolerable Misstatement (for MUS)" value={tolerableMisstatement} onChange={setTolerableMisstatement} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Sample Size" value={Math.max(0, result.sampleSize).toLocaleString("en-IN")} green />
+            <MiniStat label="MUS Size" value={Math.ceil(Math.max(0, result.musSize)).toLocaleString("en-IN")} />
+            <MiniStat label="Raw n" value={formatNum(result.rawN)} />
+            <MiniStat label="Adjusted n" value={formatNum(result.adjustedN)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Test {Math.max(0, result.sampleSize).toLocaleString("en-IN")} items from population of {Math.max(1, toNum(populationSize)).toLocaleString("en-IN")} with {confidenceLevel}% confidence.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function Section80CCalc() {
+  const [epf, setEpf] = useState("50000");
+  const [ppf, setPpf] = useState("30000");
+  const [elss, setElss] = useState("20000");
+  const [lic, setLic] = useState("15000");
+  const [homePrincipal, setHomePrincipal] = useState("25000");
+  const [tuitionFees, setTuitionFees] = useState("10000");
+  const [nscFd, setNscFd] = useState("0");
+  const [healthSelfFamily, setHealthSelfFamily] = useState("25000");
+  const [healthParents, setHealthParents] = useState("25000");
+  const [npsAdditional, setNpsAdditional] = useState("50000");
+  const [isSeniorCitizen, setIsSeniorCitizen] = useState(false);
+  const [isParentsSeniorCitizen, setIsParentsSeniorCitizen] = useState(false);
+  const [result, setResult] = useState({
+    total80C: 0,
+    total80D: 0,
+    totalNPS: 0,
+    grandTotalDeduction: 0,
+    unused80CCapacity: 0,
+    taxSavingAt30: 0,
+    taxSavingAt20: 0,
+    taxSavingAt5: 0,
+    raw80C: 0,
+  });
+
+  useEffect(() => {
+    const raw80C =
+      toNum(epf) +
+      toNum(ppf) +
+      toNum(elss) +
+      toNum(lic) +
+      toNum(homePrincipal) +
+      toNum(tuitionFees) +
+      toNum(nscFd);
+
+    const total80C = Math.min(raw80C, 150000);
+
+    const selfFamilyCap = isSeniorCitizen ? 50000 : 25000;
+    const parentsCap = isParentsSeniorCitizen ? 50000 : 25000;
+    const total80D = Math.min(toNum(healthSelfFamily), selfFamilyCap) + Math.min(toNum(healthParents), parentsCap);
+
+    const totalNPS = Math.min(toNum(npsAdditional), 50000);
+    const grandTotalDeduction = total80C + total80D + totalNPS;
+    const unused80CCapacity = Math.max(0, 150000 - total80C);
+
+    setResult({
+      total80C,
+      total80D,
+      totalNPS,
+      grandTotalDeduction,
+      unused80CCapacity,
+      taxSavingAt30: grandTotalDeduction * 0.3,
+      taxSavingAt20: grandTotalDeduction * 0.2,
+      taxSavingAt5: grandTotalDeduction * 0.05,
+      raw80C,
+    });
+  }, [
+    epf,
+    ppf,
+    elss,
+    lic,
+    homePrincipal,
+    tuitionFees,
+    nscFd,
+    healthSelfFamily,
+    healthParents,
+    npsAdditional,
+    isSeniorCitizen,
+    isParentsSeniorCitizen,
+  ]);
+
+  return (
+    <CalculatorShell
+      title="Section 80C / 80D Deduction Planner"
+      subtitle="Optimize deductions across 80C, 80D and 80CCD(1B)"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">80C Inputs</h2>
+          <MoneyInput label="EPF Contribution" value={epf} onChange={setEpf} />
+          <MoneyInput label="PPF Investment" value={ppf} onChange={setPpf} />
+          <MoneyInput label="ELSS Mutual Funds" value={elss} onChange={setElss} />
+          <MoneyInput label="LIC Premium" value={lic} onChange={setLic} />
+          <MoneyInput label="Home Loan Principal" value={homePrincipal} onChange={setHomePrincipal} />
+          <MoneyInput label="Tuition Fees" value={tuitionFees} onChange={setTuitionFees} />
+          <MoneyInput label="NSC / Tax Saving FD" value={nscFd} onChange={setNscFd} />
+
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary pt-2">80D + 80CCD(1B)</h2>
+          <MoneyInput label="Self & Family Health Premium" value={healthSelfFamily} onChange={setHealthSelfFamily} />
+          <MoneyInput label="Parents Health Premium" value={healthParents} onChange={setHealthParents} />
+          <MoneyInput label="NPS Additional (80CCD(1B))" value={npsAdditional} onChange={setNpsAdditional} />
+
+          <Field label="Senior Citizen Status">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10 gap-1">
+              <button
+                onClick={() => setIsSeniorCitizen((v) => !v)}
+                className={cn(
+                  "py-2 text-xs font-medium rounded-md transition-all",
+                  isSeniorCitizen ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                )}
+              >
+                Self/Family Senior: {isSeniorCitizen ? "Yes" : "No"}
+              </button>
+              <button
+                onClick={() => setIsParentsSeniorCitizen((v) => !v)}
+                className={cn(
+                  "py-2 text-xs font-medium rounded-md transition-all",
+                  isParentsSeniorCitizen ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                )}
+              >
+                Parents Senior: {isParentsSeniorCitizen ? "Yes" : "No"}
+              </button>
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total 80C (Capped)" value={formatINR(result.total80C)} />
+            <MiniStat label="Unused 80C Capacity" value={formatINR(result.unused80CCapacity)} />
+            <MiniStat label="Total 80D" value={formatINR(result.total80D)} />
+            <MiniStat label="Total NPS (80CCD(1B))" value={formatINR(result.totalNPS)} />
+            <MiniStat label="Grand Total Deduction" value={formatINR(result.grandTotalDeduction)} green />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Tax Saving @ 30%</div>
+              <div className="mt-2 text-lg font-bold text-gradient-orange">{formatINR(result.taxSavingAt30)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Tax Saving @ 20%</div>
+              <div className="mt-2 text-lg font-bold">{formatINR(result.taxSavingAt20)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Tax Saving @ 5%</div>
+              <div className="mt-2 text-lg font-bold">{formatINR(result.taxSavingAt5)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function BalanceTransferCalc() {
+  const [currentLoanBalance, setCurrentLoanBalance] = useState("3000000");
+  const [currentInterestRate, setCurrentInterestRate] = useState("10");
+  const [currentRemainingTenure, setCurrentRemainingTenure] = useState("180");
+  const [newInterestRate, setNewInterestRate] = useState("8.5");
+  const [processingFee, setProcessingFee] = useState("1");
+  const [prepaymentPenalty, setPrepaymentPenalty] = useState("2");
+  const [result, setResult] = useState({
+    oldEMI: 0,
+    newEMI: 0,
+    monthlySaving: 0,
+    totalInterestSaved: 0,
+    switchingCost: 0,
+    netSaving: 0,
+    breakevenMonths: 0,
+    recommended: false,
+  });
+
+  useEffect(() => {
+    const balance = toNum(currentLoanBalance);
+    const oldRate = toNum(currentInterestRate);
+    const tenure = Math.max(1, Math.floor(toNum(currentRemainingTenure)));
+    const newRate = toNum(newInterestRate);
+    const processPct = toNum(processingFee);
+    const penaltyPct = toNum(prepaymentPenalty);
+
+    const oldEMI = calculateEMIFromPrincipal(balance, oldRate, tenure);
+    const newEMI = calculateEMIFromPrincipal(balance, newRate, tenure);
+    const monthlySaving = oldEMI - newEMI;
+
+    const totalInterestOld = oldEMI * tenure - balance;
+    const totalInterestNew = newEMI * tenure - balance;
+    const totalInterestSaved = totalInterestOld - totalInterestNew;
+
+    const switchingCost = (processPct / 100) * balance + (penaltyPct / 100) * balance;
+    const netSaving = totalInterestSaved - switchingCost;
+    const breakevenMonths = monthlySaving > 0 ? switchingCost / monthlySaving : 0;
+
+    setResult({
+      oldEMI,
+      newEMI,
+      monthlySaving,
+      totalInterestSaved,
+      switchingCost,
+      netSaving,
+      breakevenMonths,
+      recommended: netSaving > 0,
+    });
+  }, [
+    currentLoanBalance,
+    currentInterestRate,
+    currentRemainingTenure,
+    newInterestRate,
+    processingFee,
+    prepaymentPenalty,
+  ]);
+
+  return (
+    <CalculatorShell
+      title="Loan Balance Transfer Calculator"
+      subtitle="Compare refinancing savings against switching cost"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Current Loan Balance" value={currentLoanBalance} onChange={setCurrentLoanBalance} />
+          <NumberInput label="Current Interest Rate (%)" value={currentInterestRate} onChange={setCurrentInterestRate} />
+          <NumberInput label="Remaining Tenure (Months)" value={currentRemainingTenure} onChange={setCurrentRemainingTenure} />
+          <NumberInput label="New Interest Rate (%)" value={newInterestRate} onChange={setNewInterestRate} />
+          <NumberInput label="Processing Fee (%)" value={processingFee} onChange={setProcessingFee} />
+          <NumberInput label="Prepayment Penalty (%)" value={prepaymentPenalty} onChange={setPrepaymentPenalty} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Old EMI" value={formatINR(result.oldEMI)} />
+            <MiniStat label="New EMI" value={formatINR(result.newEMI)} />
+            <MiniStat label="Monthly EMI Saving" value={formatINR(result.monthlySaving)} />
+            <MiniStat label="Total Interest Saved" value={formatINR(result.totalInterestSaved)} />
+            <MiniStat label="Switching Cost" value={formatINR(result.switchingCost)} />
+            <MiniStat label="Net Saving" value={formatINR(result.netSaving)} green={result.netSaving > 0} />
+            <MiniStat label="Breakeven (Months)" value={formatNum(result.breakevenMonths)} />
+          </div>
+
+          <div className={cn(
+            "card-surface p-4 border text-sm",
+            result.recommended ? "border-success/40 text-success" : "border-red-400/40 text-red-400"
+          )}>
+            {result.recommended ? "Worth switching" : "Not recommended"}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function DividendTaxCalc() {
+  const [dividendAmount, setDividendAmount] = useState("100000");
+  const [shareholderType, setShareholderType] = useState<"individual" | "company" | "NRI">("individual");
+  const [taxSlab, setTaxSlab] = useState<"5" | "20" | "30">("30");
+  const [hasDTAA, setHasDTAA] = useState(false);
+  const [result, setResult] = useState({
+    grossDividend: 0,
+    tdsDeducted: 0,
+    netDividendReceived: 0,
+    additionalTaxIfAny: 0,
+    totalTaxOnDividend: 0,
+    effectiveRate: 0,
+  });
+
+  useEffect(() => {
+    const gross = toNum(dividendAmount);
+    let tdsDeducted = 0;
+    let totalTaxOnDividend = 0;
+
+    if (shareholderType === "individual") {
+      const slabRate = toNum(taxSlab) / 100;
+      totalTaxOnDividend = gross * slabRate;
+      tdsDeducted = gross > 5000 ? gross * 0.1 : 0;
+    } else if (shareholderType === "company") {
+      totalTaxOnDividend = gross * 0.22;
+      tdsDeducted = 0;
+    } else {
+      if (hasDTAA) {
+        totalTaxOnDividend = gross * 0.1;
+      } else {
+        const baseTax = gross * 0.2;
+        const surcharge = baseTax * 0.1;
+        const cess = (baseTax + surcharge) * 0.04;
+        totalTaxOnDividend = baseTax + surcharge + cess;
+      }
+      tdsDeducted = totalTaxOnDividend;
+    }
+
+    const additionalTaxIfAny = Math.max(0, totalTaxOnDividend - tdsDeducted);
+    const netDividendReceived = gross - tdsDeducted;
+    const effectiveRate = gross > 0 ? (totalTaxOnDividend / gross) * 100 : 0;
+
+    setResult({
+      grossDividend: gross,
+      tdsDeducted,
+      netDividendReceived,
+      additionalTaxIfAny,
+      totalTaxOnDividend,
+      effectiveRate,
+    });
+  }, [dividendAmount, shareholderType, taxSlab, hasDTAA]);
+
+  return (
+    <CalculatorShell
+      title="Dividend Tax Calculator"
+      subtitle="Estimate withholding and final tax by shareholder type"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Dividend Amount" value={dividendAmount} onChange={setDividendAmount} />
+
+          <Field label="Shareholder Type">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["individual", "company", "NRI"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setShareholderType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all capitalize",
+                    shareholderType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Tax Slab (Individual)">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["5", "20", "30"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setTaxSlab(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    taxSlab === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}%
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {shareholderType === "NRI" && (
+            <Field label="DTAA Available">
+              <button
+                onClick={() => setHasDTAA((v) => !v)}
+                className={cn(
+                  "w-full py-2 text-sm font-medium rounded-md transition-all border",
+                  hasDTAA
+                    ? "bg-gradient-orange text-white glow-orange border-transparent"
+                    : "text-secondary border-white/10 hover:text-white"
+                )}
+              >
+                {hasDTAA ? "Yes (Use 10% DTAA rate)" : "No (Use 20% + surcharge + cess)"}
+              </button>
+            </Field>
+          )}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Gross Dividend" value={formatINR(result.grossDividend)} />
+            <MiniStat label="TDS Deducted" value={formatINR(result.tdsDeducted)} />
+            <MiniStat label="Net Dividend Received" value={formatINR(result.netDividendReceived)} green />
+            <MiniStat label="Additional Tax If Any" value={formatINR(result.additionalTaxIfAny)} />
+            <MiniStat label="Total Tax on Dividend" value={formatINR(result.totalTaxOnDividend)} />
+            <MiniStat label="Effective Rate" value={formatPct(result.effectiveRate)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            TDS of 10% deducted by company if dividend &gt; ₹5,000 annually
           </div>
         </div>
       )}
