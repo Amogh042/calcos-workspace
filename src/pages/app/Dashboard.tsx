@@ -28,7 +28,36 @@ const compliance = [
 
 export default function Dashboard() {
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="relative">
+      {/* Decorative background growth line */}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 1200 200"
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 w-full h-[200px]"
+        style={{ zIndex: 0 }}
+      >
+        <defs>
+          <linearGradient id="dashFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="rgba(249,115,22,0.05)" />
+            <stop offset="100%" stopColor="rgba(249,115,22,0)" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0,180 C200,170 350,140 500,110 C650,80 800,70 950,45 C1080,25 1150,15 1200,10 L1200,200 L0,200 Z"
+          fill="url(#dashFill)"
+        />
+        <path
+          className="dashboard-bg-line"
+          d="M0,180 C200,170 350,140 500,110 C650,80 800,70 950,45 C1080,25 1150,15 1200,10"
+          fill="none"
+          stroke="rgba(249,115,22,0.15)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      <div className="relative max-w-7xl mx-auto space-y-8" style={{ zIndex: 1 }}>
       <header>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           Good morning, <span className="text-gradient-orange">Amogh</span>
@@ -110,6 +139,7 @@ export default function Dashboard() {
           </ul>
         </div>
       </section>
+      </div>
     </div>
   );
 }
