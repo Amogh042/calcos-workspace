@@ -24,6 +24,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "current-ratio": FinancialRatiosCalc,
   "break-even": BreakEvenCalc,
   "compound-interest": CompoundInterestCalc,
+  "loan-eligibility": LoanEligibilityCalc,
+  "home-loan": HomeLoanCalc,
+  "rental-yield": RentalYieldCalc,
+  npv: NPVCalc,
+  tds: TDSCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -42,6 +47,11 @@ const titleMap: Record<string, string> = {
   "current-ratio": "Financial Ratios Dashboard",
   "break-even": "Break-even Calculator",
   "compound-interest": "Compound Interest Calculator",
+  "loan-eligibility": "Loan Eligibility Calculator",
+  "home-loan": "Home Loan Calculator",
+  "rental-yield": "Rental Yield Calculator",
+  npv: "NPV Calculator",
+  tds: "TDS Calculator",
 };
 
 const categoryMap: Record<string, string> = {
@@ -60,6 +70,11 @@ const categoryMap: Record<string, string> = {
   "current-ratio": "ratios",
   "break-even": "ratios",
   "compound-interest": "investment",
+  "loan-eligibility": "loans",
+  "home-loan": "loans",
+  "rental-yield": "realestate",
+  npv: "valuation",
+  tds: "tax",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -81,6 +96,60 @@ const CII_TABLE: Record<number, number> = {
   2023: 348,
   2024: 363,
 };
+
+const TDS_CONFIG = {
+  "Professional/Technical fees (194J)": {
+    section: "194J",
+    threshold: 30000,
+    residentRate: 10,
+    nriRate: 20,
+  },
+  "Rent - Plant & Machinery (194I)": {
+    section: "194I",
+    threshold: 240000,
+    residentRate: 2,
+    nriRate: 30,
+  },
+  "Rent - Land/Building (194I)": {
+    section: "194I",
+    threshold: 240000,
+    residentRate: 10,
+    nriRate: 30,
+  },
+  "Contractor payment (194C)": {
+    section: "194C",
+    threshold: 30000,
+    residentRate: 1,
+    residentCompanyRate: 2,
+    nriRate: 20,
+  },
+  "Commission/Brokerage (194H)": {
+    section: "194H",
+    threshold: 15000,
+    residentRate: 5,
+    nriRate: 20,
+  },
+  "Interest from banks (194A)": {
+    section: "194A",
+    threshold: 40000,
+    residentRate: 10,
+    nriRate: 30,
+  },
+  "Salary (192)": {
+    section: "192",
+    threshold: 0,
+    residentRate: 0,
+    nriRate: 30,
+  },
+  "Director remuneration (194J)": {
+    section: "194J",
+    threshold: 30000,
+    residentRate: 10,
+    nriRate: 20,
+  },
+} as const;
+
+type TdsPaymentType = keyof typeof TDS_CONFIG;
 
 type Slab = { min: number; max: number | null; rate: number; label: string };
 type SlabRow = { slab: string; income: number; rate: number; tax: number };
@@ -142,6 +211,24 @@ function calculateSlabTax(taxableIncome: number, slabs: Slab[]): { slabBreakdown
     };
   });
   return { slabBreakdown, baseTax };
+}
+
+function calculateEMIFromPrincipal(principal: number, annualRate: number, tenureMonths: number): number {
+  const p = Math.max(0, principal);
+  const n = Math.max(0, tenureMonths);
+  const r = annualRate / 12 / 100;
+  if (!p || !n) return 0;
+  if (r === 0) return p / n;
+  return (p * r * (1 + r) ** n) / ((1 + r) ** n - 1);
+}
+
+function calculateLoanFromEMI(emi: number, annualRate: number, tenureMonths: number): number {
+  const monthlyEmi = Math.max(0, emi);
+  const n = Math.max(0, tenureMonths);
+  const r = annualRate / 12 / 100;
+  if (!monthlyEmi || !n) return 0;
+  if (r === 0) return monthlyEmi * n;
+  return monthlyEmi * (((1 + r) ** n - 1) / (r * (1 + r) ** n));
 }
 
 export default function CalculatorDetail() {
@@ -1653,6 +1740,507 @@ function CompoundInterestCalc() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function LoanEligibilityCalc() {
+  const [monthlyIncome, setMonthlyIncome] = useState("100000");
+  const [existingEMIs, setExistingEMIs] = useState("15000");
+  const [interestRate, setInterestRate] = useState("9");
+  const [tenureYears, setTenureYears] = useState("20");
+  const [result, setResult] = useState({
+    availableForEMI: 0,
+    maxLoanAmount: 0,
+    scenarios: [] as Array<{ label: string; foir: number; emi: number; maxLoan: number }>,
+  });
+
+  useEffect(() => {
+    const income = toNum(monthlyIncome);
+    const existing = toNum(existingEMIs);
+    const rate = toNum(interestRate);
+    const months = Math.max(0, Math.floor(toNum(tenureYears) * 12));
+
+    const availableForEMI = Math.max(0, income * 0.5 - existing);
+    const maxLoanAmount = calculateLoanFromEMI(availableForEMI, rate, months);
+
+    const foirLevels = [
+      { label: "Conservative", foir: 40 },
+      { label: "Standard", foir: 50 },
+      { label: "Aggressive", foir: 60 },
+    ];
+
+    const scenarios = foirLevels.map((item) => {
+      const emi = Math.max(0, income * (item.foir / 100) - existing);
+      const maxLoan = calculateLoanFromEMI(emi, rate, months);
+      return {
+        label: item.label,
+        foir: item.foir,
+        emi,
+        maxLoan,
+      };
+    });
+
+    setResult({ availableForEMI, maxLoanAmount, scenarios });
+  }, [monthlyIncome, existingEMIs, interestRate, tenureYears]);
+
+  return (
+    <CalculatorShell
+      title="Loan Eligibility Calculator"
+      subtitle="Estimate maximum eligible loan based on FOIR"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Monthly Income" value={monthlyIncome} onChange={setMonthlyIncome} />
+          <MoneyInput label="Existing EMIs" value={existingEMIs} onChange={setExistingEMIs} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Tenure (Years)" value={tenureYears} onChange={setTenureYears} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Available For EMI (50% FOIR)" value={formatINR(result.availableForEMI)} />
+            <MiniStat label="Max Loan Amount" value={formatINR(result.maxLoanAmount)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">FOIR Scenarios</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Scenario</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">FOIR</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Monthly EMI</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Max Loan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.scenarios.map((row, index) => (
+                    <tr key={row.label} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.label}</td>
+                      <td className="px-3 py-2 text-right">{row.foir}%</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.emi)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.maxLoan)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function HomeLoanCalc() {
+  const [propertyValue, setPropertyValue] = useState("8000000");
+  const [downPaymentPercent, setDownPaymentPercent] = useState("20");
+  const [interestRate, setInterestRate] = useState("9");
+  const [tenureYears, setTenureYears] = useState("20");
+  const [result, setResult] = useState({
+    downPayment: 0,
+    loanAmount: 0,
+    monthlyEMI: 0,
+    totalInterest: 0,
+    totalPayment: 0,
+    interestToLoanRatio: 0,
+    rateScenarios: [] as Array<{ label: string; rate: number; emi: number }>,
+  });
+
+  useEffect(() => {
+    const value = toNum(propertyValue);
+    const dpPct = toNum(downPaymentPercent);
+    const rate = toNum(interestRate);
+    const months = Math.max(0, Math.floor(toNum(tenureYears) * 12));
+
+    const downPayment = value * (dpPct / 100);
+    const loanAmount = value * (1 - dpPct / 100);
+    const monthlyEMI = calculateEMIFromPrincipal(loanAmount, rate, months);
+    const totalPayment = monthlyEMI * months;
+    const totalInterest = Math.max(0, totalPayment - loanAmount);
+    const interestToLoanRatio = loanAmount > 0 ? (totalInterest / loanAmount) * 100 : 0;
+
+    const rateScenarios = [
+      { label: "Rate - 1%", rate: Math.max(0, rate - 1) },
+      { label: "Current Rate", rate },
+      { label: "Rate + 1%", rate: rate + 1 },
+    ].map((item) => ({
+      label: item.label,
+      rate: item.rate,
+      emi: calculateEMIFromPrincipal(loanAmount, item.rate, months),
+    }));
+
+    setResult({
+      downPayment,
+      loanAmount,
+      monthlyEMI,
+      totalInterest,
+      totalPayment,
+      interestToLoanRatio,
+      rateScenarios,
+    });
+  }, [propertyValue, downPaymentPercent, interestRate, tenureYears]);
+
+  return (
+    <CalculatorShell
+      title="Home Loan Calculator"
+      subtitle="EMI analysis with rate sensitivity scenarios"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Property Value" value={propertyValue} onChange={setPropertyValue} />
+          <NumberInput label="Down Payment (%)" value={downPaymentPercent} onChange={setDownPaymentPercent} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Tenure (Years)" value={tenureYears} onChange={setTenureYears} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Loan Amount" value={formatINR(result.loanAmount)} />
+            <MiniStat label="Down Payment" value={formatINR(result.downPayment)} />
+            <MiniStat label="Monthly EMI" value={formatINR(result.monthlyEMI)} />
+            <MiniStat label="Total Interest" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Total Payment" value={formatINR(result.totalPayment)} />
+            <MiniStat label="Interest to Loan Ratio" value={formatPct(result.interestToLoanRatio)} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {result.rateScenarios.map((item) => (
+              <div key={item.label} className="card-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-tertiary">{item.label}</div>
+                <div className="mt-1 text-sm text-secondary">{formatPct(item.rate)}</div>
+                <div className="mt-2 text-lg font-bold text-gradient-orange">{formatINR(item.emi)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function RentalYieldCalc() {
+  const [propertyValue, setPropertyValue] = useState("6000000");
+  const [monthlyRent, setMonthlyRent] = useState("35000");
+  const [annualMaintenance, setAnnualMaintenance] = useState("50000");
+  const [annualPropertyTax, setAnnualPropertyTax] = useState("20000");
+  const [vacancyRate, setVacancyRate] = useState("5");
+  const [result, setResult] = useState({
+    grossYield: 0,
+    netYield: 0,
+    annualGrossIncome: 0,
+    annualNetIncome: 0,
+    adjustedForVacancy: 0,
+    paybackYears: 0,
+  });
+
+  useEffect(() => {
+    const value = toNum(propertyValue);
+    const rent = toNum(monthlyRent);
+    const maintenance = toNum(annualMaintenance);
+    const tax = toNum(annualPropertyTax);
+    const vacancy = toNum(vacancyRate);
+
+    const annualGrossIncome = rent * 12;
+    const grossYield = value > 0 ? (annualGrossIncome / value) * 100 : 0;
+    const annualNetIncome = annualGrossIncome - maintenance - tax;
+    const adjustedForVacancy = annualNetIncome * (1 - vacancy / 100);
+    const netYield = value > 0 ? (adjustedForVacancy / value) * 100 : 0;
+    const paybackYears = annualNetIncome > 0 ? value / annualNetIncome : 0;
+
+    setResult({
+      grossYield,
+      netYield,
+      annualGrossIncome,
+      annualNetIncome,
+      adjustedForVacancy,
+      paybackYears,
+    });
+  }, [propertyValue, monthlyRent, annualMaintenance, annualPropertyTax, vacancyRate]);
+
+  return (
+    <CalculatorShell
+      title="Rental Yield Calculator"
+      subtitle="Gross and net rental yield with vacancy adjustment"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Property Value" value={propertyValue} onChange={setPropertyValue} />
+          <MoneyInput label="Monthly Rent" value={monthlyRent} onChange={setMonthlyRent} />
+          <MoneyInput label="Annual Maintenance" value={annualMaintenance} onChange={setAnnualMaintenance} />
+          <MoneyInput label="Annual Property Tax" value={annualPropertyTax} onChange={setAnnualPropertyTax} />
+          <NumberInput label="Vacancy Rate (%)" value={vacancyRate} onChange={setVacancyRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <MiniStat label="Gross Yield" value={formatPct(result.grossYield)} />
+          <MiniStat label="Net Yield" value={formatPct(result.netYield)} green />
+          <MiniStat label="Annual Gross Income" value={formatINR(result.annualGrossIncome)} />
+          <MiniStat label="Annual Net Income" value={formatINR(result.annualNetIncome)} />
+          <MiniStat label="Adjusted for Vacancy" value={formatINR(result.adjustedForVacancy)} />
+          <MiniStat label="Payback Years" value={formatNum(result.paybackYears)} />
+        </div>
+      )}
+    />
+  );
+}
+
+function NPVCalc() {
+  const [initialInvestment, setInitialInvestment] = useState("1000000");
+  const [discountRate, setDiscountRate] = useState("12");
+  const [cashFlows, setCashFlows] = useState<string[]>(["300000", "350000", "400000"]);
+  const [result, setResult] = useState({
+    npv: 0,
+    irr: 0,
+    paybackPeriod: 0,
+    profitabilityIndex: 0,
+  });
+
+  useEffect(() => {
+    const investment = toNum(initialInvestment);
+    const rate = toNum(discountRate) / 100;
+    const flows = cashFlows.map((item) => toNum(item));
+
+    let discountedTotal = 0;
+    for (let i = 0; i < flows.length; i += 1) {
+      discountedTotal += flows[i] / (1 + rate) ** (i + 1);
+    }
+    const npv = discountedTotal - investment;
+
+    let irr = 0;
+    for (let candidate = 0; candidate <= 100; candidate += 0.1) {
+      const candidateRate = candidate / 100;
+      let candidateNpv = -investment;
+      for (let i = 0; i < flows.length; i += 1) {
+        candidateNpv += flows[i] / (1 + candidateRate) ** (i + 1);
+      }
+      if (candidateNpv <= 0) {
+        irr = candidate;
+        break;
+      }
+      if (candidate >= 99.9) irr = 100;
+    }
+
+    let cumulative = 0;
+    let paybackPeriod = 0;
+    for (let i = 0; i < flows.length; i += 1) {
+      const prevCumulative = cumulative;
+      cumulative += flows[i];
+      if (!paybackPeriod && cumulative >= investment) {
+        const remainingBeforeYear = Math.max(0, investment - prevCumulative);
+        const fraction = flows[i] > 0 ? remainingBeforeYear / flows[i] : 0;
+        paybackPeriod = i + fraction;
+      }
+    }
+
+    const profitabilityIndex = investment > 0 ? discountedTotal / investment : 0;
+
+    setResult({ npv, irr, paybackPeriod, profitabilityIndex });
+  }, [initialInvestment, discountRate, cashFlows]);
+
+  const addYear = () => {
+    if (cashFlows.length >= 10) return;
+    setCashFlows((prev) => [...prev, "0"]);
+  };
+
+  const updateCashFlow = (index: number, value: string) => {
+    setCashFlows((prev) => prev.map((item, i) => (i === index ? value : item)));
+  };
+
+  return (
+    <CalculatorShell
+      title="NPV Calculator"
+      subtitle="Discounted cash flow analysis with IRR approximation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Initial Investment" value={initialInvestment} onChange={setInitialInvestment} />
+          <NumberInput label="Discount Rate (%)" value={discountRate} onChange={setDiscountRate} />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-secondary">Cash Flows</label>
+              <button
+                onClick={addYear}
+                disabled={cashFlows.length >= 10}
+                className="px-3 py-1.5 rounded-md text-xs font-medium bg-gradient-orange text-white disabled:opacity-50"
+              >
+                Add Year
+              </button>
+            </div>
+            {cashFlows.map((value, index) => (
+              <MoneyInput
+                key={`cf-${index + 1}`}
+                label={`Year ${index + 1}`}
+                value={value}
+                onChange={(val) => updateCashFlow(index, val)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-6">
+            <div className="text-xs text-tertiary uppercase tracking-wide font-medium">NPV</div>
+            <div className={cn(
+              "mt-2 text-4xl font-bold",
+              result.npv >= 0 ? "text-success" : "text-red-400"
+            )}>
+              {formatINR(result.npv)}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <MiniStat label="IRR" value={formatPct(result.irr)} />
+            <MiniStat label="Payback Period (Years)" value={formatNum(result.paybackPeriod)} />
+            <MiniStat label="Profitability Index" value={formatNum(result.profitabilityIndex)} />
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function TDSCalc() {
+  const paymentTypes = Object.keys(TDS_CONFIG) as TdsPaymentType[];
+  const [paymentType, setPaymentType] = useState<TdsPaymentType>("Professional/Technical fees (194J)");
+  const [paymentAmount, setPaymentAmount] = useState("100000");
+  const [recipientType, setRecipientType] = useState<"resident" | "NRI">("resident");
+  const [contractorType, setContractorType] = useState<"individual" | "company">("individual");
+  const [result, setResult] = useState({
+    tdsAmount: 0,
+    netPayment: 0,
+    sectionReference: "",
+    thresholdLimit: 0,
+    thresholdMet: false,
+    rateUsed: 0,
+    dueDate: "7th of next month",
+  });
+
+  useEffect(() => {
+    const amount = toNum(paymentAmount);
+    const config = TDS_CONFIG[paymentType];
+    const thresholdMet = amount >= config.threshold;
+
+    let rateUsed = 0;
+    if (paymentType === "Salary (192)") {
+      if (recipientType === "resident") {
+        const taxableIncome = Math.max(0, amount - 75000);
+        const { baseTax } = calculateSlabTax(taxableIncome, NEW_REGIME_SLABS);
+        const totalTax = baseTax * 1.04;
+        rateUsed = amount > 0 ? (totalTax / amount) * 100 : 0;
+      } else {
+        rateUsed = config.nriRate;
+      }
+    } else if (recipientType === "resident") {
+      if (paymentType === "Contractor payment (194C)") {
+        rateUsed = contractorType === "company" && "residentCompanyRate" in config
+          ? config.residentCompanyRate
+          : config.residentRate;
+      } else {
+        rateUsed = config.residentRate;
+      }
+    } else {
+      rateUsed = config.nriRate;
+    }
+
+    const tdsAmount = thresholdMet ? amount * (rateUsed / 100) : 0;
+    const netPayment = amount - tdsAmount;
+
+    setResult({
+      tdsAmount,
+      netPayment,
+      sectionReference: config.section,
+      thresholdLimit: config.threshold,
+      thresholdMet,
+      rateUsed,
+      dueDate: "7th of next month",
+    });
+  }, [paymentType, paymentAmount, recipientType, contractorType]);
+
+  return (
+    <CalculatorShell
+      title="TDS Calculator"
+      subtitle="Section-wise TDS estimate with threshold checks"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <Field label="Payment Type">
+            <select
+              value={paymentType}
+              onChange={(e) => setPaymentType(e.target.value as TdsPaymentType)}
+              className="glass-select w-full h-11 px-3 rounded-[10px] text-sm focus:outline-none focus:border-[rgba(249,115,22,0.5)]"
+            >
+              {paymentTypes.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+
+          <MoneyInput label="Payment Amount" value={paymentAmount} onChange={setPaymentAmount} />
+
+          <Field label="Recipient Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["resident", "NRI"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setRecipientType(item)}
+                  className={cn(
+                    "py-2 text-sm font-medium rounded-md transition-all",
+                    recipientType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {paymentType === "Contractor payment (194C)" && recipientType === "resident" && (
+            <Field label="Contractor Type">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+                {(["individual", "company"] as const).map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setContractorType(item)}
+                    className={cn(
+                      "py-2 text-sm font-medium rounded-md transition-all capitalize",
+                      contractorType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                    )}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          {!result.thresholdMet && result.thresholdLimit > 0 && (
+            <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+              Threshold warning: Payment is below {formatINR(result.thresholdLimit)}. TDS may not be applicable.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="TDS Amount" value={formatINR(result.tdsAmount)} />
+            <MiniStat label="Net Payment" value={formatINR(result.netPayment)} />
+            <MiniStat label="Section Reference" value={result.sectionReference} />
+            <MiniStat label="Threshold Limit" value={formatINR(result.thresholdLimit)} />
+            <MiniStat label="Rate Used" value={formatPct(result.rateUsed)} />
+            <MiniStat label="Due Date for Deposit" value={result.dueDate} />
           </div>
         </div>
       )}
