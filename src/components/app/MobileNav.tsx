@@ -11,7 +11,7 @@ const items = [
 ];
 
 export const MobileNav = () => (
-  <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 h-16 bg-[hsl(var(--surface-sidebar))]/95 backdrop-blur-md border-t border-white/[0.06] flex">
+  <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 h-16 glass-topbar flex">
     {items.map(({ to, label, icon: Icon }) => (
       <NavLink
         key={to}

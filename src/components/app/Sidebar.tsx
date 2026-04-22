@@ -80,7 +80,7 @@ const NavItem = ({ to, label, icon: Icon, badge, glow }: any) => (
 
 export const Sidebar = () => {
   return (
-    <aside className="hidden md:flex flex-col w-[260px] shrink-0 h-screen sticky top-0 bg-[hsl(var(--surface-sidebar))] border-r border-white/[0.06]">
+    <aside className="hidden md:flex flex-col w-[260px] shrink-0 h-screen sticky top-0 glass-sidebar">
       <div className="px-5 pt-5 pb-3">
         <Logo />
       </div>
