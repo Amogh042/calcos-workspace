@@ -4,53 +4,37 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
 @layer base {
   :root {
-    /* CalcOS dark theme */
-    --background: 0 0% 5%;          /* #0d0d0d */
+    --background: 0 0% 5%;
     --foreground: 0 0% 100%;
-
-    --card: 0 0% 10%;               /* #1a1a1a */
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 100%;
-
-    --surface-elevated: 0 0% 13%;   /* #222222 */
-    --surface-sidebar: 0 0% 6.7%;   /* #111111 */
-
+    --surface-elevated: 0 0% 13%;
+    --surface-sidebar: 0 0% 6.7%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 100%;
-
-    --primary: 25 95% 53%;          /* #f97316 orange */
+    --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 38 92% 50%;     /* #f59e0b amber */
-
+    --primary-glow: 38 92% 50%;
     --secondary: 0 0% 13%;
     --secondary-foreground: 0 0% 100%;
-
     --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 60%;
-
+    --muted-foreground: 0 0% 70%;
     --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-
     --success: 142 71% 45%;
     --warning: 38 92% 50%;
-
-    --border: 0 0% 100%;            /* used with /8 alpha */
+    --border: 0 0% 100%;
     --border-strong: 0 0% 100%;
     --input: 0 0% 13%;
     --ring: 25 95% 53%;
-
     --radius: 0.75rem;
-
     --gradient-orange: linear-gradient(135deg, hsl(25 95% 53%), hsl(38 92% 50%));
     --shadow-glow: 0 0 24px hsl(25 95% 53% / 0.25);
     --shadow-glow-strong: 0 0 32px hsl(25 95% 53% / 0.4);
-
     --sidebar-background: 0 0% 6.7%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 25 95% 53%;
@@ -73,7 +57,7 @@
     --secondary: 0 0% 13%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 70%;
     --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
@@ -88,11 +72,9 @@
   * {
     border-color: hsl(var(--border) / 0.08);
   }
-
   html {
     color-scheme: dark;
   }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -101,8 +83,6 @@
       radial-gradient(circle at 75% 100%, hsl(38 92% 50% / 0.03), transparent 40%);
     background-attachment: fixed;
   }
-
-  /* Subtle dot grid pattern */
   .bg-grid {
     background-image: radial-gradient(hsl(0 0% 100% / 0.04) 1px, transparent 1px);
     background-size: 24px 24px;
@@ -125,7 +105,6 @@
     box-shadow: 0 0 30px rgba(249, 115, 22, 0.12);
     transform: translateY(-2px);
   }
-
   .glass-sidebar {
     background: rgba(255, 255, 255, 0.03);
     border-right: 1px solid rgba(255, 255, 255, 0.07);
@@ -145,6 +124,10 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     transition: all 0.2s ease;
+    color: rgba(255, 255, 255, 0.90) !important;
+  }
+  .glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
   }
   .glass-input:focus,
   .glass-input:focus-visible {
@@ -156,6 +139,11 @@
     border: 1px solid rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    color: rgba(255, 255, 255, 0.90) !important;
+  }
+  .glass-select option {
+    background: #1a1a1a;
+    color: #ffffff;
   }
   .glass-button {
     background: rgba(255, 255, 255, 0.06);
@@ -167,8 +155,11 @@
   .glass-button:hover {
     background: rgba(255, 255, 255, 0.10);
   }
-  .text-tertiary { color: hsl(0 0% 100% / 0.35); }
-  .text-secondary { color: hsl(0 0% 100% / 0.6); }
+
+  /* FIXED: !important prevents Tailwind utility from overriding */
+  .text-tertiary { color: rgba(255, 255, 255, 0.40) !important; }
+  .text-secondary { color: rgba(255, 255, 255, 0.65) !important; }
+
   .gradient-orange { background: var(--gradient-orange); }
   .text-gradient-orange {
     background: var(--gradient-orange);

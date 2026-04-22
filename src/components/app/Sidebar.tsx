@@ -37,8 +37,8 @@ const tools = [
 
 const SectionHeader = ({ children }: { children: string }) => (
   <div
-    className="px-5 pt-5 pb-2 text-[10px] font-semibold uppercase text-tertiary"
-    style={{ letterSpacing: "0.08em" }}
+    className="px-5 pt-5 pb-2 text-[10px] font-semibold uppercase"
+    style={{ letterSpacing: "0.08em", color: "rgba(255,255,255,0.40)" }}
   >
     {children}
   </div>
@@ -51,10 +51,13 @@ const NavItem = ({ to, label, icon: Icon, badge, glow }: any) => (
       cn(
         "group relative flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-sm transition-all",
         isActive
-          ? "bg-primary/10 text-primary font-medium"
-          : "text-secondary hover:text-white hover:bg-white/[0.04]"
+          ? "bg-primary/10 font-medium"
+          : "hover:bg-white/[0.04]"
       )
     }
+    style={({ isActive }) => ({
+      color: isActive ? "hsl(25 95% 53%)" : "rgba(255,255,255,0.65)",
+    })}
   >
     {({ isActive }) => (
       <>
@@ -69,7 +72,10 @@ const NavItem = ({ to, label, icon: Icon, badge, glow }: any) => (
         </div>
         <span className="flex-1 truncate">{label}</span>
         {badge != null && (
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/5 text-tertiary group-hover:bg-primary/15 group-hover:text-primary transition-colors">
+          <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/5 group-hover:bg-primary/15 group-hover:text-primary transition-colors"
+            style={{ color: "rgba(255,255,255,0.40)" }}
+          >
             {badge}
           </span>
         )}
@@ -104,12 +110,12 @@ export const Sidebar = () => {
         <NavItem to="/settings" label="Settings" icon={Settings} />
 
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors">
-          <div className="h-8 w-8 rounded-full bg-gradient-orange grid place-items-center text-xs font-bold">
+          <div className="h-8 w-8 rounded-full bg-gradient-orange grid place-items-center text-xs font-bold text-white">
             A
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">Amogh</div>
-            <div className="text-[11px] text-tertiary">amogh@calcos.com</div>
+            <div className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.90)" }}>Amogh</div>
+            <div className="text-[11px]" style={{ color: "rgba(255,255,255,0.40)" }}>amogh@calcos.com</div>
           </div>
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-pill bg-primary/15 text-primary">
             Free
@@ -119,8 +125,12 @@ export const Sidebar = () => {
         <div className="rounded-xl p-3 bg-gradient-orange/10 border border-primary/20 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-orange opacity-10" />
           <div className="relative">
-            <div className="text-xs font-semibold mb-1">Unlock all 100+ tools</div>
-            <div className="text-[11px] text-secondary mb-2">PDF export, CalcAI, premium calculators</div>
+            <div className="text-xs font-semibold mb-1" style={{ color: "rgba(255,255,255,0.90)" }}>
+              Unlock all 100+ tools
+            </div>
+            <div className="text-[11px] mb-2" style={{ color: "rgba(255,255,255,0.65)" }}>
+              PDF export, CalcAI, premium calculators
+            </div>
             <button className="w-full text-xs font-semibold py-1.5 rounded-md bg-gradient-orange text-white glow-orange hover:glow-orange-strong transition-shadow">
               Upgrade to Pro
             </button>
