@@ -39,6 +39,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "80c-planner": Section80CCalc,
   "balance-transfer": BalanceTransferCalc,
   "dividend-tax": DividendTaxCalc,
+  roe: ROEDetailCalc,
+  irr: IRRCalc,
+  payback: PaybackCalc,
+  lumpsum: LumpsumCalc,
+  esi: ESICalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -72,6 +77,11 @@ const titleMap: Record<string, string> = {
   "80c-planner": "Section 80C / 80D Deduction Planner",
   "balance-transfer": "Loan Balance Transfer Calculator",
   "dividend-tax": "Dividend Tax Calculator",
+  roe: "Return on Equity (ROE) — DuPont Analysis",
+  irr: "IRR Calculator",
+  payback: "Payback Period Calculator",
+  lumpsum: "Lumpsum Investment Calculator",
+  esi: "ESI (Employee State Insurance) Calculator",
 };
 
 const categoryMap: Record<string, string> = {
@@ -105,6 +115,11 @@ const categoryMap: Record<string, string> = {
   "80c-planner": "tax",
   "balance-transfer": "loans",
   "dividend-tax": "tax",
+  roe: "ratios",
+  irr: "valuation",
+  payback: "valuation",
+  lumpsum: "investment",
+  esi: "payroll",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -3449,6 +3464,624 @@ function DividendTaxCalc() {
 
           <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
             TDS of 10% deducted by company if dividend &gt; ₹5,000 annually
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ROEDetailCalc() {
+  const [netIncome, setNetIncome] = useState("1200000");
+  const [revenue, setRevenue] = useState("12000000");
+  const [totalAssets, setTotalAssets] = useState("18000000");
+  const [shareholderEquity, setShareholderEquity] = useState("6000000");
+  const [result, setResult] = useState({
+    basicROE: 0,
+    netProfitMarginPct: 0,
+    assetTurnover: 0,
+    equityMultiplier: 0,
+    dupontROE: 0,
+    driver: "",
+  });
+
+  useEffect(() => {
+    const ni = toNum(netIncome);
+    const rev = toNum(revenue);
+    const assets = toNum(totalAssets);
+    const equity = toNum(shareholderEquity);
+
+    const basicROE = equity > 0 ? (ni / equity) * 100 : 0;
+    const netProfitMarginPct = rev > 0 ? (ni / rev) * 100 : 0;
+    const assetTurnover = assets > 0 ? rev / assets : 0;
+    const equityMultiplier = equity > 0 ? assets / equity : 0;
+    const dupontROE = netProfitMarginPct * assetTurnover * equityMultiplier;
+
+    const marginScore = Math.abs(netProfitMarginPct);
+    const efficiencyScore = Math.abs(assetTurnover);
+    const leverageScore = Math.abs(equityMultiplier);
+    let driver = "Balanced contribution across margin, efficiency, and leverage.";
+    if (marginScore >= efficiencyScore && marginScore >= leverageScore) {
+      driver = "ROE is primarily driven by profit margin.";
+    } else if (efficiencyScore >= marginScore && efficiencyScore >= leverageScore) {
+      driver = "ROE is primarily driven by asset efficiency (turnover).";
+    } else if (leverageScore >= marginScore && leverageScore >= efficiencyScore) {
+      driver = "ROE is primarily driven by financial leverage.";
+    }
+
+    setResult({
+      basicROE,
+      netProfitMarginPct,
+      assetTurnover,
+      equityMultiplier,
+      dupontROE,
+      driver,
+    });
+  }, [netIncome, revenue, totalAssets, shareholderEquity]);
+
+  return (
+    <CalculatorShell
+      title="Return on Equity (ROE) — DuPont Analysis"
+      subtitle="Understand whether ROE is driven by margin, efficiency, or leverage"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Net Income" value={netIncome} onChange={setNetIncome} />
+          <MoneyInput label="Revenue" value={revenue} onChange={setRevenue} />
+          <MoneyInput label="Total Assets" value={totalAssets} onChange={setTotalAssets} />
+          <MoneyInput label="Shareholder Equity" value={shareholderEquity} onChange={setShareholderEquity} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Basic ROE" value={formatPct(result.basicROE)} green />
+            <MiniStat label="DuPont ROE" value={formatPct(result.dupontROE)} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Net Profit Margin</div>
+              <div className="mt-2 text-xl font-bold">{formatPct(result.netProfitMarginPct)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Asset Turnover</div>
+              <div className="mt-2 text-xl font-bold">{formatNum(result.assetTurnover)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Equity Multiplier</div>
+              <div className="mt-2 text-xl font-bold">{formatNum(result.equityMultiplier)}</div>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            {formatPct(result.netProfitMarginPct)} × {formatNum(result.assetTurnover)} × {formatNum(result.equityMultiplier)} = {formatPct(result.dupontROE)}
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.driver}</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function IRRCalc() {
+  const [initialInvestment, setInitialInvestment] = useState("1000000");
+  const [cashFlows, setCashFlows] = useState<string[]>(["250000", "300000", "350000", "400000"]);
+  const [reinvestmentRate, setReinvestmentRate] = useState("10");
+  const [result, setResult] = useState({
+    irr: 0,
+    mirr: 0,
+    npvProfile: [] as Array<{ rate: number; npv: number }>,
+  });
+
+  useEffect(() => {
+    const investment = toNum(initialInvestment);
+    const flows = cashFlows.map((value) => toNum(value));
+    const n = flows.length;
+    const reinvestRate = toNum(reinvestmentRate) / 100;
+
+    const npvAtRate = (ratePct: number) => {
+      const rate = ratePct / 100;
+      return -investment + flows.reduce((sum, cf, idx) => sum + cf / (1 + rate) ** (idx + 1), 0);
+    };
+
+    let irr = 0;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    for (let rate = 0; rate <= 200; rate += 0.01) {
+      const npv = npvAtRate(rate);
+      const diff = Math.abs(npv);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        irr = rate;
+      }
+      if (diff < 1) break;
+    }
+
+    const fvPositive = flows.reduce((sum, cf, idx) => {
+      if (cf <= 0) return sum;
+      return sum + cf * (1 + reinvestRate) ** (n - (idx + 1));
+    }, 0);
+
+    const pvNegative = investment + flows.reduce((sum, cf, idx) => {
+      if (cf >= 0) return sum;
+      return sum + Math.abs(cf) / (1 + reinvestRate) ** (idx + 1);
+    }, 0);
+
+    const mirr = n > 0 && pvNegative > 0
+      ? ((fvPositive / pvNegative) ** (1 / n) - 1) * 100
+      : 0;
+
+    const profileRates = [5, 10, 15, 20, 25, 30];
+    const npvProfile = profileRates.map((rate) => ({
+      rate,
+      npv: npvAtRate(rate),
+    }));
+
+    setResult({ irr, mirr, npvProfile });
+  }, [initialInvestment, cashFlows, reinvestmentRate]);
+
+  const addYear = () => {
+    if (cashFlows.length >= 10) return;
+    setCashFlows((prev) => [...prev, "0"]);
+  };
+
+  const updateCashFlow = (index: number, value: string) => {
+    setCashFlows((prev) => prev.map((item, i) => (i === index ? value : item)));
+  };
+
+  return (
+    <CalculatorShell
+      title="IRR Calculator"
+      subtitle="IRR and MIRR analysis with NPV profile"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+            <button
+              onClick={addYear}
+              disabled={cashFlows.length >= 10}
+              className="px-3 py-1.5 rounded-md text-xs font-medium bg-gradient-orange text-white disabled:opacity-50"
+            >
+              Add Year
+            </button>
+          </div>
+
+          <MoneyInput label="Initial Investment" value={initialInvestment} onChange={setInitialInvestment} />
+          {cashFlows.map((value, index) => (
+            <MoneyInput
+              key={`irr-cf-${index + 1}`}
+              label={`Year ${index + 1} Cash Flow`}
+              value={value}
+              onChange={(val) => updateCashFlow(index, val)}
+            />
+          ))}
+          <NumberInput label="Reinvestment Rate (%)" value={reinvestmentRate} onChange={setReinvestmentRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="IRR" value={formatPct(result.irr)} green />
+            <MiniStat label="MIRR" value={formatPct(result.mirr)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Accept project if IRR &gt; cost of capital.
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">NPV Profile</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">NPV</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.npvProfile.map((row, index) => (
+                    <tr key={row.rate} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.rate}%</td>
+                      <td className={cn("px-5 py-2 text-right font-medium", row.npv >= 0 ? "text-success" : "text-red-400")}>{formatINR(row.npv)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PaybackCalc() {
+  const [initialInvestment, setInitialInvestment] = useState("1000000");
+  const [discountRate, setDiscountRate] = useState("10");
+  const [cashFlows, setCashFlows] = useState<string[]>(["250000", "300000", "350000", "400000"]);
+  const [result, setResult] = useState({
+    simplePaybackMonths: 0,
+    discountedPaybackMonths: 0,
+    simpleLabel: "Not achieved",
+    discountedLabel: "Not achieved",
+    simpleAchievedYear: -1,
+    discountedAchievedYear: -1,
+    rows: [] as Array<{
+      year: number;
+      cashFlow: number;
+      cumulativeSimple: number;
+      pvCashFlow: number;
+      cumulativeDiscounted: number;
+      highlight: boolean;
+    }>,
+  });
+
+  useEffect(() => {
+    const investment = toNum(initialInvestment);
+    const rate = toNum(discountRate) / 100;
+    const flows = cashFlows.map((value) => toNum(value));
+
+    let cumulativeSimple = 0;
+    let cumulativeDiscounted = 0;
+    let simplePaybackMonths = 0;
+    let discountedPaybackMonths = 0;
+    let simpleFound = false;
+    let discountedFound = false;
+    let simpleAchievedYear = -1;
+    let discountedAchievedYear = -1;
+
+    const rows = flows.map((cf, idx) => {
+      const year = idx + 1;
+
+      const prevSimple = cumulativeSimple;
+      cumulativeSimple += cf;
+      if (!simpleFound && cumulativeSimple >= investment && cf > 0) {
+        const fraction = (investment - prevSimple) / cf;
+        simplePaybackMonths = Math.max(0, (idx + fraction) * 12);
+        simpleFound = true;
+        simpleAchievedYear = year;
+      }
+
+      const pvCashFlow = cf / (1 + rate) ** year;
+      const prevDiscounted = cumulativeDiscounted;
+      cumulativeDiscounted += pvCashFlow;
+      if (!discountedFound && cumulativeDiscounted >= investment && pvCashFlow > 0) {
+        const fraction = (investment - prevDiscounted) / pvCashFlow;
+        discountedPaybackMonths = Math.max(0, (idx + fraction) * 12);
+        discountedFound = true;
+        discountedAchievedYear = year;
+      }
+
+      return {
+        year,
+        cashFlow: cf,
+        cumulativeSimple,
+        pvCashFlow,
+        cumulativeDiscounted,
+        highlight: year === simpleAchievedYear || year === discountedAchievedYear,
+      };
+    });
+
+    const toYearsMonths = (months: number) => {
+      const yearsInt = Math.floor(months / 12);
+      const monthsInt = Math.round(months % 12);
+      return `${yearsInt}y ${monthsInt}m`;
+    };
+
+    setResult({
+      simplePaybackMonths,
+      discountedPaybackMonths,
+      simpleLabel: simpleFound ? toYearsMonths(simplePaybackMonths) : "Not achieved",
+      discountedLabel: discountedFound ? toYearsMonths(discountedPaybackMonths) : "Not achieved",
+      simpleAchievedYear,
+      discountedAchievedYear,
+      rows,
+    });
+  }, [initialInvestment, discountRate, cashFlows]);
+
+  const addYear = () => {
+    if (cashFlows.length >= 8) return;
+    setCashFlows((prev) => [...prev, "0"]);
+  };
+
+  const updateCashFlow = (index: number, value: string) => {
+    setCashFlows((prev) => prev.map((item, i) => (i === index ? value : item)));
+  };
+
+  return (
+    <CalculatorShell
+      title="Payback Period Calculator"
+      subtitle="Simple and discounted payback analysis"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+            <button
+              onClick={addYear}
+              disabled={cashFlows.length >= 8}
+              className="px-3 py-1.5 rounded-md text-xs font-medium bg-gradient-orange text-white disabled:opacity-50"
+            >
+              Add Year
+            </button>
+          </div>
+          <MoneyInput label="Initial Investment" value={initialInvestment} onChange={setInitialInvestment} />
+          <NumberInput label="Discount Rate (%)" value={discountRate} onChange={setDiscountRate} />
+          {cashFlows.map((value, index) => (
+            <MoneyInput
+              key={`payback-cf-${index + 1}`}
+              label={`Year ${index + 1} Cash Flow`}
+              value={value}
+              onChange={(val) => updateCashFlow(index, val)}
+            />
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Simple Payback" value={result.simpleLabel} green />
+            <MiniStat label="Discounted Payback" value={result.discountedLabel} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Cumulative Cash Flow Table</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Cash Flow</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Cumulative Simple</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">PV of CF</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Cumulative Discounted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.year} className={cn(index % 2 ? "bg-white/[0.02]" : "", row.highlight && "bg-primary/10") }>
+                      <td className={cn("px-5 py-2 text-secondary", row.highlight && "text-primary font-semibold")}>{row.year}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.cashFlow)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.cumulativeSimple)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.pvCashFlow)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.cumulativeDiscounted)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function LumpsumCalc() {
+  const [principalAmount, setPrincipalAmount] = useState("1000000");
+  const [expectedReturn, setExpectedReturn] = useState("12");
+  const [years, setYears] = useState("10");
+  const [inflationRate, setInflationRate] = useState("6");
+  const [result, setResult] = useState({
+    futureValue: 0,
+    realValueAfterInflation: 0,
+    wealthGained: 0,
+    absoluteReturn: 0,
+    cagr: 0,
+    rows: [] as Array<{ year: number; your: number; fd: number; savings: number; real: number }>,
+  });
+
+  useEffect(() => {
+    const principal = toNum(principalAmount);
+    const nominal = toNum(expectedReturn);
+    const y = Math.max(0, Math.floor(toNum(years)));
+    const inflation = toNum(inflationRate);
+
+    const futureValue = principal * (1 + nominal / 100) ** y;
+    const realReturn = ((1 + nominal / 100) / (1 + inflation / 100) - 1) * 100;
+    const realValueAfterInflation = principal * (1 + realReturn / 100) ** y;
+    const wealthGained = futureValue - principal;
+    const absoluteReturn = principal > 0 ? (wealthGained / principal) * 100 : 0;
+    const cagr = y > 0 && principal > 0 ? ((futureValue / principal) ** (1 / y) - 1) * 100 : 0;
+
+    const rows = Array.from({ length: y }, (_, idx) => {
+      const year = idx + 1;
+      return {
+        year,
+        your: principal * (1 + nominal / 100) ** year,
+        fd: principal * (1 + 7 / 100) ** year,
+        savings: principal * (1 + 4 / 100) ** year,
+        real: principal * (1 + realReturn / 100) ** year,
+      };
+    });
+
+    setResult({
+      futureValue,
+      realValueAfterInflation,
+      wealthGained,
+      absoluteReturn,
+      cagr,
+      rows,
+    });
+  }, [principalAmount, expectedReturn, years, inflationRate]);
+
+  const latest = result.rows[result.rows.length - 1];
+
+  return (
+    <CalculatorShell
+      title="Lumpsum Investment Calculator"
+      subtitle="Nominal and inflation-adjusted growth comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Principal Amount" value={principalAmount} onChange={setPrincipalAmount} />
+          <NumberInput label="Expected Return (%)" value={expectedReturn} onChange={setExpectedReturn} />
+          <NumberInput label="Years" value={years} onChange={setYears} />
+          <NumberInput label="Inflation Rate (%)" value={inflationRate} onChange={setInflationRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Future Value" value={formatINR(result.futureValue)} green />
+            <MiniStat label="Real Value After Inflation" value={formatINR(result.realValueAfterInflation)} />
+            <MiniStat label="Wealth Gained" value={formatINR(result.wealthGained)} />
+            <MiniStat label="Absolute Return" value={formatPct(result.absoluteReturn)} />
+            <MiniStat label="CAGR" value={formatPct(result.cagr)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Comparison (Final Year)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Instrument</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-5 py-2 text-secondary">Your Investment</td>
+                    <td className="px-5 py-2 text-right font-medium">{formatINR(latest?.your ?? 0)}</td>
+                  </tr>
+                  <tr className="bg-white/[0.02]">
+                    <td className="px-5 py-2 text-secondary">FD @ 7%</td>
+                    <td className="px-5 py-2 text-right font-medium">{formatINR(latest?.fd ?? 0)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-5 py-2 text-secondary">Savings @ 4%</td>
+                    <td className="px-5 py-2 text-right font-medium">{formatINR(latest?.savings ?? 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Year-by-year Growth</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Your Investment</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">FD @ 7%</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Savings @ 4%</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Real Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.your)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.fd)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.savings)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.real)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ESICalc() {
+  const [grossSalary, setGrossSalary] = useState("18000");
+  const [result, setResult] = useState({
+    applicable: true,
+    employeeESI: 0,
+    employerESI: 0,
+    totalESI: 0,
+    annualESI: 0,
+    rows: [] as Array<{ salary: number; employee: number; employer: number; total: number }>,
+  });
+
+  useEffect(() => {
+    const gross = toNum(grossSalary);
+    const applicable = gross <= 21000;
+
+    const employeeESI = applicable ? gross * 0.0075 : 0;
+    const employerESI = applicable ? gross * 0.0325 : 0;
+    const totalESI = employeeESI + employerESI;
+    const annualESI = totalESI * 12;
+
+    const rows: Array<{ salary: number; employee: number; employer: number; total: number }> = [];
+    for (let salary = 10000; salary <= 21000; salary += 1000) {
+      const employee = salary * 0.0075;
+      const employer = salary * 0.0325;
+      rows.push({ salary, employee, employer, total: employee + employer });
+    }
+
+    setResult({
+      applicable,
+      employeeESI,
+      employerESI,
+      totalESI,
+      annualESI,
+      rows,
+    });
+  }, [grossSalary]);
+
+  return (
+    <CalculatorShell
+      title="ESI (Employee State Insurance) Calculator"
+      subtitle="Monthly and annual ESI contribution breakdown"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Gross Salary (Monthly)" value={grossSalary} onChange={setGrossSalary} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          {!result.applicable && (
+            <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+              Not applicable — gross salary exceeds ₹21,000 limit
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Employee ESI (0.75%)" value={formatINR(result.employeeESI)} />
+            <MiniStat label="Employer ESI (3.25%)" value={formatINR(result.employerESI)} />
+            <MiniStat label="Total ESI (4%)" value={formatINR(result.totalESI)} green />
+            <MiniStat label="Annual ESI" value={formatINR(result.annualESI)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Benefits covered: medical, maternity, disability, dependent benefit
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">ESI Contribution Table (₹10,000 to ₹21,000)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Salary</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Employee</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Employer</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.salary} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{formatINR(row.salary)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.employee)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.employer)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
