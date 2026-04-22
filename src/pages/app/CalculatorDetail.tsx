@@ -58,7 +58,7 @@ export default function CalculatorDetail() {
                   value={income}
                   onChange={(e) => setIncome(e.target.value.replace(/[^0-9]/g, ""))}
                   placeholder="0"
-                  className="w-full h-11 pl-8 pr-3 rounded-lg bg-card-elevated border border-white/10 text-base font-medium focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                  className="glass-input w-full h-11 pl-8 pr-3 text-base font-medium"
                 />
                 {income && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-tertiary">
@@ -72,7 +72,7 @@ export default function CalculatorDetail() {
               <select
                 value={fy}
                 onChange={(e) => setFy(e.target.value)}
-                className="w-full h-11 px-3 rounded-lg bg-card-elevated border border-white/10 text-sm focus:outline-none focus:border-primary/40"
+                className="glass-select w-full h-11 px-3 rounded-[10px] text-sm focus:outline-none focus:border-[rgba(249,115,22,0.5)]"
               >
                 {FY.map((f) => <option key={f}>{f}</option>)}
               </select>
@@ -119,7 +119,7 @@ export default function CalculatorDetail() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">₹</span>
                 <input
                   placeholder="0"
-                  className="w-full h-11 pl-8 pr-3 rounded-lg bg-card-elevated border border-white/10 text-sm focus:outline-none focus:border-primary/40"
+                  className="glass-input w-full h-11 pl-8 pr-3 text-sm"
                 />
               </div>
             </Field>
