@@ -44,6 +44,16 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   payback: PaybackCalc,
   lumpsum: LumpsumCalc,
   esi: ESICalc,
+  "car-loan": CarLoanCalc,
+  "personal-loan": PersonalLoanCalc,
+  prepayment: PrepaymentCalc,
+  "gst-late-fee": GSTLateFeeCalc,
+  "itc-reconciliation": ITCReconciliationCalc,
+  "uk-income-tax": UKIncomeTaxCalc,
+  "us-federal-tax": USFederalTaxCalc,
+  "uae-vat": UAEVATCalc,
+  "uk-vat": UKVATCalc,
+  "sg-income-tax": SGIncomeTaxCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -82,6 +92,16 @@ const titleMap: Record<string, string> = {
   payback: "Payback Period Calculator",
   lumpsum: "Lumpsum Investment Calculator",
   esi: "ESI (Employee State Insurance) Calculator",
+  "car-loan": "Car Loan EMI Calculator",
+  "personal-loan": "Personal Loan Calculator",
+  prepayment: "Loan Prepayment Savings Calculator",
+  "gst-late-fee": "GST Late Fee Calculator",
+  "itc-reconciliation": "GST ITC Reconciliation",
+  "uk-income-tax": "UK Income Tax Calculator",
+  "us-federal-tax": "US Federal Income Tax Calculator",
+  "uae-vat": "UAE VAT Calculator",
+  "uk-vat": "UK VAT Calculator",
+  "sg-income-tax": "Singapore Income Tax Calculator",
 };
 
 const categoryMap: Record<string, string> = {
@@ -120,6 +140,16 @@ const categoryMap: Record<string, string> = {
   payback: "valuation",
   lumpsum: "investment",
   esi: "payroll",
+  "car-loan": "loans",
+  "personal-loan": "loans",
+  prepayment: "loans",
+  "gst-late-fee": "gst",
+  "itc-reconciliation": "gst",
+  "uk-income-tax": "tax",
+  "us-federal-tax": "tax",
+  "uae-vat": "gst",
+  "uk-vat": "gst",
+  "sg-income-tax": "tax",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -234,6 +264,31 @@ function formatINR(value: number): string {
   return `₹ ${Math.max(0, value).toLocaleString("en-IN", {
     maximumFractionDigits: 2,
   })}`;
+}
+
+function formatCurrency(value: number, locale: string, currency: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.max(0, value));
+}
+
+function formatGBP(value: number): string {
+  return formatCurrency(value, "en-GB", "GBP");
+}
+
+function formatUSD(value: number): string {
+  return formatCurrency(value, "en-US", "USD");
+}
+
+function formatSGD(value: number): string {
+  return formatCurrency(value, "en-SG", "SGD");
+}
+
+function formatAED(value: number): string {
+  return formatCurrency(value, "en-AE", "AED");
 }
 
 function formatPct(value: number): string {
@@ -4077,6 +4132,1338 @@ function ESICalc() {
                       <td className="px-3 py-2 text-right">{formatINR(row.employee)}</td>
                       <td className="px-3 py-2 text-right">{formatINR(row.employer)}</td>
                       <td className="px-5 py-2 text-right font-medium">{formatINR(row.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function CarLoanCalc() {
+  const [carPrice, setCarPrice] = useState("1200000");
+  const [downPayment, setDownPayment] = useState("200000");
+  const [interestRate, setInterestRate] = useState("9");
+  const [tenureYears, setTenureYears] = useState("5");
+  const [processingFeePercent, setProcessingFeePercent] = useState("1");
+  const [insuranceAmount, setInsuranceAmount] = useState("50000");
+  const [result, setResult] = useState({
+    loanAmount: 0,
+    monthlyEMI: 0,
+    totalInterest: 0,
+    totalCostOfOwnership: 0,
+    effectiveInterestRate: 0,
+    comparisons: [] as Array<{ years: number; emi: number; totalInterest: number }>,
+  });
+
+  useEffect(() => {
+    const price = toNum(carPrice);
+    const dp = toNum(downPayment);
+    const rate = toNum(interestRate);
+    const years = Math.max(1, Math.floor(toNum(tenureYears)));
+    const insurance = toNum(insuranceAmount);
+    const feePct = toNum(processingFeePercent);
+
+    const loanAmount = Math.max(0, price - dp);
+    const months = years * 12;
+    const monthlyEMI = calculateEMIFromPrincipal(loanAmount, rate, months);
+    const totalInterest = monthlyEMI * months - loanAmount;
+
+    const processingFee = loanAmount * feePct / 100;
+    const totalCostOfOwnership = dp + monthlyEMI * months + insurance;
+    const effectiveInterestRate = loanAmount > 0
+      ? ((totalInterest + processingFee) / loanAmount / years) * 100
+      : 0;
+
+    const tenures = [3, 5, 7];
+    const comparisons = tenures.map((y) => {
+      const m = y * 12;
+      const emi = calculateEMIFromPrincipal(loanAmount, rate, m);
+      const ti = emi * m - loanAmount;
+      return { years: y, emi, totalInterest: ti };
+    });
+
+    setResult({
+      loanAmount,
+      monthlyEMI,
+      totalInterest,
+      totalCostOfOwnership,
+      effectiveInterestRate,
+      comparisons,
+    });
+  }, [carPrice, downPayment, interestRate, tenureYears, processingFeePercent, insuranceAmount]);
+
+  return (
+    <CalculatorShell
+      title="Car Loan EMI Calculator"
+      subtitle="On-road financing and tenure comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Car Price" value={carPrice} onChange={setCarPrice} />
+          <MoneyInput label="Down Payment" value={downPayment} onChange={setDownPayment} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Tenure (Years)" value={tenureYears} onChange={setTenureYears} />
+          <NumberInput label="Processing Fee (%)" value={processingFeePercent} onChange={setProcessingFeePercent} />
+          <MoneyInput label="Insurance Amount" value={insuranceAmount} onChange={setInsuranceAmount} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Loan Amount" value={formatINR(result.loanAmount)} />
+            <MiniStat label="Monthly EMI" value={formatINR(result.monthlyEMI)} />
+            <MiniStat label="Total Interest" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Total Cost of Ownership" value={formatINR(result.totalCostOfOwnership)} green />
+            <MiniStat label="Effective Interest Rate" value={formatPct(result.effectiveInterestRate)} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {result.comparisons.map((item) => (
+              <div key={item.years} className="card-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-tertiary">{item.years} Years</div>
+                <div className="mt-2 text-sm text-secondary">EMI</div>
+                <div className="text-lg font-bold text-gradient-orange">{formatINR(item.emi)}</div>
+                <div className="mt-2 text-xs text-secondary">Interest: {formatINR(item.totalInterest)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PersonalLoanCalc() {
+  const [loanAmount, setLoanAmount] = useState("500000");
+  const [interestRate, setInterestRate] = useState("14");
+  const [tenureMonths, setTenureMonths] = useState("36");
+  const [processingFeePercent, setProcessingFeePercent] = useState("2");
+  const [result, setResult] = useState({
+    monthlyEMI: 0,
+    processingFee: 0,
+    totalInterest: 0,
+    totalPayment: 0,
+    effectiveAPR: 0,
+    amortization: [] as Array<{ month: number; principal: number; interest: number; balance: number }>,
+  });
+
+  useEffect(() => {
+    const principal = toNum(loanAmount);
+    const rate = toNum(interestRate);
+    const months = Math.max(1, Math.floor(toNum(tenureMonths)));
+    const feePct = toNum(processingFeePercent);
+
+    const monthlyEMI = calculateEMIFromPrincipal(principal, rate, months);
+    const totalPayment = monthlyEMI * months;
+    const totalInterest = totalPayment - principal;
+    const processingFee = principal * feePct / 100;
+    const effectiveAPR = principal > 0
+      ? ((totalInterest + processingFee) / principal / (months / 12)) * 100
+      : 0;
+
+    const r = rate / 12 / 100;
+    let balance = principal;
+    const amortization: Array<{ month: number; principal: number; interest: number; balance: number }> = [];
+    for (let month = 1; month <= Math.min(6, months); month += 1) {
+      const interest = r === 0 ? 0 : balance * r;
+      const principalPart = Math.min(balance, monthlyEMI - interest);
+      balance = Math.max(0, balance - principalPart);
+      amortization.push({ month, principal: principalPart, interest, balance });
+    }
+
+    setResult({
+      monthlyEMI,
+      processingFee,
+      totalInterest,
+      totalPayment,
+      effectiveAPR,
+      amortization,
+    });
+  }, [loanAmount, interestRate, tenureMonths, processingFeePercent]);
+
+  return (
+    <CalculatorShell
+      title="Personal Loan Calculator"
+      subtitle="EMI, effective APR and first 6-month amortization"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Loan Amount" value={loanAmount} onChange={setLoanAmount} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Tenure (Months)" value={tenureMonths} onChange={setTenureMonths} />
+          <NumberInput label="Processing Fee (%)" value={processingFeePercent} onChange={setProcessingFeePercent} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Monthly EMI" value={formatINR(result.monthlyEMI)} />
+            <MiniStat label="Processing Fee" value={formatINR(result.processingFee)} />
+            <MiniStat label="Total Interest" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Total Payment" value={formatINR(result.totalPayment)} />
+            <MiniStat label="Effective APR" value={formatPct(result.effectiveAPR)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Amortization (First 6 Months)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Month</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Principal</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Interest</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.amortization.map((row, index) => (
+                    <tr key={row.month} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.month}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.principal)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.interest)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PrepaymentCalc() {
+  const [originalLoan, setOriginalLoan] = useState("3000000");
+  const [interestRate, setInterestRate] = useState("9");
+  const [originalTenureMonths, setOriginalTenureMonths] = useState("240");
+  const [monthsPaid, setMonthsPaid] = useState("24");
+  const [prepaymentAmount, setPrepaymentAmount] = useState("500000");
+  const [prepaymentPenaltyPercent, setPrepaymentPenaltyPercent] = useState("2");
+  const [result, setResult] = useState({
+    remainingBalance: 0,
+    penaltyAmount: 0,
+    optionA: { newTenure: 0, monthsSaved: 0, interestSaved: 0, netSaving: 0 },
+    optionB: { newEMI: 0, emiSaving: 0, totalSaving: 0 },
+  });
+
+  useEffect(() => {
+    const principal = toNum(originalLoan);
+    const annualRate = toNum(interestRate);
+    const tenure = Math.max(1, Math.floor(toNum(originalTenureMonths)));
+    const paid = Math.min(tenure - 1, Math.max(0, Math.floor(toNum(monthsPaid))));
+    const prepay = Math.max(0, toNum(prepaymentAmount));
+    const penaltyPct = toNum(prepaymentPenaltyPercent);
+
+    const emi = calculateEMIFromPrincipal(principal, annualRate, tenure);
+    const r = annualRate / 12 / 100;
+
+    let remainingBalance = principal;
+    let interestPaidSoFar = 0;
+    for (let i = 0; i < paid; i += 1) {
+      const interest = r === 0 ? 0 : remainingBalance * r;
+      const principalPart = Math.min(remainingBalance, emi - interest);
+      remainingBalance = Math.max(0, remainingBalance - principalPart);
+      interestPaidSoFar += interest;
+    }
+
+    const balanceAfterPrepayment = Math.max(0, remainingBalance - prepay);
+    const penaltyAmount = prepay * penaltyPct / 100;
+    const remainingTenure = Math.max(1, tenure - paid);
+
+    let newTenureA = 0;
+    let interestOnNewBalanceA = 0;
+    if (balanceAfterPrepayment > 0) {
+      if (r === 0) {
+        newTenureA = Math.ceil(balanceAfterPrepayment / emi);
+      } else {
+        newTenureA = Math.ceil(Math.log(emi / (emi - balanceAfterPrepayment * r)) / Math.log(1 + r));
+      }
+      let balA = balanceAfterPrepayment;
+      for (let i = 0; i < newTenureA; i += 1) {
+        const interest = r === 0 ? 0 : balA * r;
+        const principalPart = Math.min(balA, emi - interest);
+        balA = Math.max(0, balA - principalPart);
+        interestOnNewBalanceA += interest;
+      }
+    }
+
+    const originalTotalInterest = emi * tenure - principal;
+    const interestSavedA = originalTotalInterest - interestPaidSoFar - interestOnNewBalanceA;
+    const monthsSaved = Math.max(0, remainingTenure - newTenureA);
+    const netSavingA = interestSavedA - penaltyAmount;
+
+    const newEMI = calculateEMIFromPrincipal(balanceAfterPrepayment, annualRate, remainingTenure);
+    const totalInterestNewB = newEMI * remainingTenure - balanceAfterPrepayment;
+    const totalInterestOldRemaining = emi * remainingTenure - remainingBalance;
+    const totalSavingB = totalInterestOldRemaining - totalInterestNewB - penaltyAmount;
+    const emiSaving = emi - newEMI;
+
+    setResult({
+      remainingBalance,
+      penaltyAmount,
+      optionA: {
+        newTenure: newTenureA,
+        monthsSaved,
+        interestSaved: interestSavedA,
+        netSaving: netSavingA,
+      },
+      optionB: {
+        newEMI,
+        emiSaving,
+        totalSaving: totalSavingB,
+      },
+    });
+  }, [originalLoan, interestRate, originalTenureMonths, monthsPaid, prepaymentAmount, prepaymentPenaltyPercent]);
+
+  return (
+    <CalculatorShell
+      title="Loan Prepayment Savings Calculator"
+      subtitle="Compare reduced tenure vs reduced EMI after prepayment"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Original Loan" value={originalLoan} onChange={setOriginalLoan} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Original Tenure (Months)" value={originalTenureMonths} onChange={setOriginalTenureMonths} />
+          <NumberInput label="Months Paid" value={monthsPaid} onChange={setMonthsPaid} />
+          <MoneyInput label="Prepayment Amount" value={prepaymentAmount} onChange={setPrepaymentAmount} />
+          <NumberInput label="Prepayment Penalty (%)" value={prepaymentPenaltyPercent} onChange={setPrepaymentPenaltyPercent} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Remaining Balance" value={formatINR(result.remainingBalance)} />
+            <MiniStat label="Penalty Amount" value={formatINR(result.penaltyAmount)} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Option A: Reduced Tenure</div>
+              <div className="mt-2 text-xs text-secondary">New Tenure: {result.optionA.newTenure.toLocaleString("en-IN")} months</div>
+              <div className="text-xs text-secondary">Months Saved: {result.optionA.monthsSaved.toLocaleString("en-IN")}</div>
+              <div className="text-xs text-secondary">Interest Saved: {formatINR(result.optionA.interestSaved)}</div>
+              <div className="mt-2 text-sm font-semibold">Net Saving: {formatINR(result.optionA.netSaving)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Option B: Reduced EMI</div>
+              <div className="mt-2 text-xs text-secondary">New EMI: {formatINR(result.optionB.newEMI)}</div>
+              <div className="text-xs text-secondary">EMI Saving: {formatINR(result.optionB.emiSaving)} / month</div>
+              <div className="mt-2 text-sm font-semibold">Total Saving: {formatINR(result.optionB.totalSaving)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function GSTLateFeeCalc() {
+  const [returnType, setReturnType] = useState<"GSTR-1" | "GSTR-3B" | "GSTR-9">("GSTR-3B");
+  const [dueDate, setDueDate] = useState("2026-04-20");
+  const [filingDate, setFilingDate] = useState("2026-04-25");
+  const [taxPayable, setTaxPayable] = useState("100000");
+  const [isNilReturn, setIsNilReturn] = useState(false);
+  const [result, setResult] = useState({
+    daysLate: 0,
+    cgstLateFee: 0,
+    sgstLateFee: 0,
+    lateFee: 0,
+    interestAmount: 0,
+    totalPenalty: 0,
+    dailyRows: [] as Array<{ day: number; cumulativeLateFee: number; cumulativeInterest: number }>,
+  });
+
+  useEffect(() => {
+    const due = new Date(dueDate);
+    const filing = new Date(filingDate);
+    const payable = toNum(taxPayable);
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const rawDays = Math.floor((filing.getTime() - due.getTime()) / msPerDay);
+    const daysLate = Math.max(0, Number.isFinite(rawDays) ? rawDays : 0);
+
+    let dailyTotalFee = 0;
+    let maxTotalFee = 0;
+
+    if (returnType === "GSTR-9") {
+      dailyTotalFee = 200;
+      maxTotalFee = payable * 0.0025;
+    } else if (isNilReturn) {
+      dailyTotalFee = 20;
+      maxTotalFee = 1000;
+    } else {
+      dailyTotalFee = 50;
+      maxTotalFee = 20000;
+    }
+
+    const lateFee = Math.min(daysLate * dailyTotalFee, maxTotalFee);
+    const cgstLateFee = lateFee / 2;
+    const sgstLateFee = lateFee / 2;
+    const interestAmount = payable > 0 ? payable * 0.18 * daysLate / 365 : 0;
+    const totalPenalty = lateFee + interestAmount;
+
+    const dailyRows: Array<{ day: number; cumulativeLateFee: number; cumulativeInterest: number }> = [];
+    if (daysLate > 0 && daysLate < 30) {
+      for (let day = 1; day <= daysLate; day += 1) {
+        const cumulativeLateFee = Math.min(day * dailyTotalFee, maxTotalFee);
+        const cumulativeInterest = payable > 0 ? payable * 0.18 * day / 365 : 0;
+        dailyRows.push({ day, cumulativeLateFee, cumulativeInterest });
+      }
+    }
+
+    setResult({
+      daysLate,
+      cgstLateFee,
+      sgstLateFee,
+      lateFee,
+      interestAmount,
+      totalPenalty,
+      dailyRows,
+    });
+  }, [returnType, dueDate, filingDate, taxPayable, isNilReturn]);
+
+  return (
+    <CalculatorShell
+      title="GST Late Fee Calculator"
+      subtitle="Late fee and interest computation by return type"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <Field label="Return Type">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["GSTR-1", "GSTR-3B", "GSTR-9"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setReturnType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    returnType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Due Date">
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+
+          <Field label="Filing Date">
+            <input
+              type="date"
+              value={filingDate}
+              onChange={(e) => setFilingDate(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+
+          <MoneyInput label="Tax Payable" value={taxPayable} onChange={setTaxPayable} />
+
+          <Field label="Nil Return">
+            <button
+              onClick={() => setIsNilReturn((v) => !v)}
+              className={cn(
+                "w-full py-2 text-sm font-medium rounded-md transition-all border",
+                isNilReturn
+                  ? "bg-gradient-orange text-white glow-orange border-transparent"
+                  : "text-secondary border-white/10 hover:text-white"
+              )}
+            >
+              {isNilReturn ? "Yes" : "No"}
+            </button>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Days Late" value={result.daysLate.toLocaleString("en-IN")} />
+            <MiniStat label="Late Fee" value={formatINR(result.lateFee)} />
+            <MiniStat label="CGST Portion" value={formatINR(result.cgstLateFee)} />
+            <MiniStat label="SGST Portion" value={formatINR(result.sgstLateFee)} />
+            <MiniStat label="Interest Amount" value={formatINR(result.interestAmount)} />
+            <MiniStat label="Total Penalty" value={formatINR(result.totalPenalty)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Penalty Breakdown</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr>
+                    <td className="px-5 py-2 text-secondary">Late fee (CGST)</td>
+                    <td className="px-5 py-2 text-right font-medium">{formatINR(result.cgstLateFee)}</td>
+                  </tr>
+                  <tr className="bg-white/[0.02]">
+                    <td className="px-5 py-2 text-secondary">Late fee (SGST)</td>
+                    <td className="px-5 py-2 text-right font-medium">{formatINR(result.sgstLateFee)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-5 py-2 text-secondary">Interest @ 18% p.a.</td>
+                    <td className="px-5 py-2 text-right font-medium">{formatINR(result.interestAmount)}</td>
+                  </tr>
+                  <tr className="border-t border-primary/20 bg-primary/5">
+                    <td className="px-5 py-2.5 font-bold">Total</td>
+                    <td className="px-5 py-2.5 text-right font-bold text-primary">{formatINR(result.totalPenalty)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {result.dailyRows.length > 0 && (
+            <div className="card-surface p-5 overflow-hidden">
+              <div className="text-sm font-semibold mb-3">Daily Breakdown</div>
+              <div className="overflow-x-auto -mx-5">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-tertiary">
+                      <th className="text-left font-medium px-5 py-2 bg-primary/10">Day</th>
+                      <th className="text-right font-medium px-3 py-2 bg-primary/10">Cumulative Late Fee</th>
+                      <th className="text-right font-medium px-5 py-2 bg-primary/10">Cumulative Interest</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.dailyRows.map((row, index) => (
+                      <tr key={row.day} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                        <td className="px-5 py-2 text-secondary">{row.day}</td>
+                        <td className="px-3 py-2 text-right">{formatINR(row.cumulativeLateFee)}</td>
+                        <td className="px-5 py-2 text-right font-medium">{formatINR(row.cumulativeInterest)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    />
+  );
+}
+
+function ITCReconciliationCalc() {
+  const [igst2B, setIgst2B] = useState("100000");
+  const [cgst2B, setCgst2B] = useState("50000");
+  const [sgst2B, setSgst2B] = useState("50000");
+  const [igstClaimed, setIgstClaimed] = useState("95000");
+  const [cgstClaimed, setCgstClaimed] = useState("52000");
+  const [sgstClaimed, setSgstClaimed] = useState("50000");
+  const [igstReversed, setIgstReversed] = useState("5000");
+  const [cgstReversed, setCgstReversed] = useState("2000");
+  const [sgstReversed, setSgstReversed] = useState("1000");
+  const [result, setResult] = useState({
+    rows: [] as Array<{
+      type: "IGST" | "CGST" | "SGST";
+      available: number;
+      claimed: number;
+      reversed: number;
+      netEligible: number;
+      difference: number;
+      status: "Excess Claimed" | "Under Claimed" | "Matched";
+    }> ,
+    totalAvailable: 0,
+    totalClaimed: 0,
+    totalDifference: 0,
+    hasExcess: false,
+  });
+
+  useEffect(() => {
+    const buildRow = (
+      type: "IGST" | "CGST" | "SGST",
+      available: number,
+      claimed: number,
+      reversed: number
+    ) => {
+      const netEligible = available - reversed;
+      const difference = claimed - available;
+      const status: "Excess Claimed" | "Under Claimed" | "Matched" = difference > 0
+        ? "Excess Claimed"
+        : difference < 0
+          ? "Under Claimed"
+          : "Matched";
+      return { type, available, claimed, reversed, netEligible, difference, status };
+    };
+
+    const rows = [
+      buildRow("IGST", toNum(igst2B), toNum(igstClaimed), toNum(igstReversed)),
+      buildRow("CGST", toNum(cgst2B), toNum(cgstClaimed), toNum(cgstReversed)),
+      buildRow("SGST", toNum(sgst2B), toNum(sgstClaimed), toNum(sgstReversed)),
+    ];
+
+    const totalAvailable = rows.reduce((sum, row) => sum + row.available, 0);
+    const totalClaimed = rows.reduce((sum, row) => sum + row.claimed, 0);
+    const totalDifference = rows.reduce((sum, row) => sum + row.difference, 0);
+    const hasExcess = rows.some((row) => row.status === "Excess Claimed");
+
+    setResult({ rows, totalAvailable, totalClaimed, totalDifference, hasExcess });
+  }, [
+    igst2B,
+    cgst2B,
+    sgst2B,
+    igstClaimed,
+    cgstClaimed,
+    sgstClaimed,
+    igstReversed,
+    cgstReversed,
+    sgstReversed,
+  ]);
+
+  return (
+    <CalculatorShell
+      title="GST ITC Reconciliation"
+      subtitle="Compare GSTR-2B, claimed ITC and reversals"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MoneyInput label="IGST as per 2B" value={igst2B} onChange={setIgst2B} />
+            <MoneyInput label="IGST Claimed" value={igstClaimed} onChange={setIgstClaimed} />
+            <MoneyInput label="CGST as per 2B" value={cgst2B} onChange={setCgst2B} />
+            <MoneyInput label="CGST Claimed" value={cgstClaimed} onChange={setCgstClaimed} />
+            <MoneyInput label="SGST as per 2B" value={sgst2B} onChange={setSgst2B} />
+            <MoneyInput label="SGST Claimed" value={sgstClaimed} onChange={setSgstClaimed} />
+            <MoneyInput label="IGST Reversed" value={igstReversed} onChange={setIgstReversed} />
+            <MoneyInput label="CGST Reversed" value={cgstReversed} onChange={setCgstReversed} />
+            <MoneyInput label="SGST Reversed" value={sgstReversed} onChange={setSgstReversed} />
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">ITC Summary</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Type</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Available</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Claimed</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Reversed</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Net Eligible</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Difference</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.type} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.type}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.available)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.claimed)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.reversed)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.netEligible)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.difference)}</td>
+                      <td className="px-5 py-2 text-right">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-pill text-[10px] font-semibold border",
+                          row.status === "Excess Claimed"
+                            ? "text-red-400 border-red-400/40 bg-red-400/10"
+                            : row.status === "Under Claimed"
+                              ? "text-warning border-warning/40 bg-warning/10"
+                              : "text-success border-success/40 bg-success/10"
+                        )}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-primary/20 bg-primary/5">
+                    <td className="px-5 py-2.5 font-bold">Total</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{formatINR(result.totalAvailable)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{formatINR(result.totalClaimed)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold">-</td>
+                    <td className="px-3 py-2.5 text-right font-bold">-</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{formatINR(result.totalDifference)}</td>
+                    <td className="px-5 py-2.5 text-right">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            {result.hasExcess
+              ? "Reverse excess ITC in next return"
+              : "No excess claim detected based on current reconciliation."}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function UKIncomeTaxCalc() {
+  const [annualIncome, setAnnualIncome] = useState("65000");
+  const [taxYear, setTaxYear] = useState("2025-26");
+  const [residency, setResidency] = useState<"England" | "Scotland" | "Wales">("England");
+  const [result, setResult] = useState({
+    incomeTax: 0,
+    nationalInsurance: 0,
+    totalDeductions: 0,
+    takeHome: 0,
+    effectiveIncomeTaxRate: 0,
+    effectiveTotalRate: 0,
+    taxRows: [] as Array<{ slab: string; taxable: number; rate: number; tax: number }>,
+    niRows: [] as Array<{ slab: string; taxable: number; rate: number; amount: number }>,
+  });
+
+  useEffect(() => {
+    const income = Math.max(0, toNum(annualIncome));
+
+    const englandWalesBands = [
+      { min: 0, max: 12570, rate: 0, label: "Personal Allowance" },
+      { min: 12570, max: 50270, rate: 20, label: "Basic Rate" },
+      { min: 50270, max: 125140, rate: 40, label: "Higher Rate" },
+      { min: 125140, max: null as number | null, rate: 45, label: "Additional Rate" },
+    ];
+
+    const scotlandBands = [
+      { min: 0, max: 12570, rate: 0, label: "Personal Allowance" },
+      { min: 12570, max: 14876, rate: 19, label: "Starter Rate" },
+      { min: 14876, max: 26561, rate: 20, label: "Basic Rate" },
+      { min: 26561, max: 43662, rate: 21, label: "Intermediate Rate" },
+      { min: 43662, max: 75000, rate: 42, label: "Higher Rate" },
+      { min: 75000, max: null as number | null, rate: 47, label: "Top Rate" },
+    ];
+
+    const selectedBands = residency === "Scotland" ? scotlandBands : englandWalesBands;
+    const taxRows = selectedBands.map((band) => {
+      const upper = band.max ?? Number.POSITIVE_INFINITY;
+      const taxable = Math.max(0, Math.min(income, upper) - band.min);
+      const tax = taxable * band.rate / 100;
+      return { slab: band.label, taxable, rate: band.rate, tax };
+    });
+    const incomeTax = taxRows.reduce((sum, row) => sum + row.tax, 0);
+
+    const niBands = [
+      { min: 0, max: 12570, rate: 0, label: "Primary Threshold" },
+      { min: 12570, max: 50270, rate: 8, label: "Main NI Rate" },
+      { min: 50270, max: null as number | null, rate: 2, label: "Additional NI Rate" },
+    ];
+    const niRows = niBands.map((band) => {
+      const upper = band.max ?? Number.POSITIVE_INFINITY;
+      const taxable = Math.max(0, Math.min(income, upper) - band.min);
+      const amount = taxable * band.rate / 100;
+      return { slab: band.label, taxable, rate: band.rate, amount };
+    });
+
+    const nationalInsurance = niRows.reduce((sum, row) => sum + row.amount, 0);
+    const totalDeductions = incomeTax + nationalInsurance;
+    const takeHome = Math.max(0, income - totalDeductions);
+    const effectiveIncomeTaxRate = income > 0 ? incomeTax / income * 100 : 0;
+    const effectiveTotalRate = income > 0 ? totalDeductions / income * 100 : 0;
+
+    setResult({
+      incomeTax,
+      nationalInsurance,
+      totalDeductions,
+      takeHome,
+      effectiveIncomeTaxRate,
+      effectiveTotalRate,
+      taxRows,
+      niRows,
+    });
+  }, [annualIncome, taxYear, residency]);
+
+  return (
+    <CalculatorShell
+      title="UK Income Tax Calculator"
+      subtitle="Income tax and National Insurance estimate"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <NumberInput label="Annual Income (GBP)" value={annualIncome} onChange={setAnnualIncome} />
+
+          <Field label="Tax Year">
+            <input
+              value={taxYear}
+              onChange={(e) => setTaxYear(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+
+          <Field label="Residency">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["England", "Scotland", "Wales"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setResidency(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    residency === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Income Tax" value={formatGBP(result.incomeTax)} />
+            <MiniStat label="National Insurance" value={formatGBP(result.nationalInsurance)} />
+            <MiniStat label="Total Deductions" value={formatGBP(result.totalDeductions)} />
+            <MiniStat label="Take Home" value={formatGBP(result.takeHome)} green />
+            <MiniStat label="Effective Income Tax Rate" value={formatPct(result.effectiveIncomeTaxRate)} />
+            <MiniStat label="Effective Total Rate" value={formatPct(result.effectiveTotalRate)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Income Tax Slab Breakdown</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Slab</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Taxable Income</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.taxRows.map((row, index) => (
+                    <tr key={row.slab} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.slab}</td>
+                      <td className="px-3 py-2 text-right">{formatGBP(row.taxable)}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatGBP(row.tax)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">National Insurance Breakdown</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Band</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Income</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">NI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.niRows.map((row, index) => (
+                    <tr key={row.slab} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.slab}</td>
+                      <td className="px-3 py-2 text-right">{formatGBP(row.taxable)}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatGBP(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function USFederalTaxCalc() {
+  const [annualIncome, setAnnualIncome] = useState("120000");
+  const [filingStatus, setFilingStatus] = useState<"Single" | "MFJ" | "MFS" | "HoH">("Single");
+  const [taxYear, setTaxYear] = useState("2025");
+  const [result, setResult] = useState({
+    federalTax: 0,
+    socialSecurity: 0,
+    medicare: 0,
+    totalTax: 0,
+    effectiveRate: 0,
+    marginalRate: 0,
+    takeHome: 0,
+    taxableIncome: 0,
+    bracketRows: [] as Array<{ slab: string; taxable: number; rate: number; tax: number }>,
+  });
+
+  useEffect(() => {
+    const income = Math.max(0, toNum(annualIncome));
+    const standardDeductionMap = {
+      Single: 15000,
+      MFJ: 30000,
+      MFS: 15000,
+      HoH: 22500,
+    } as const;
+    const standardDeduction = standardDeductionMap[filingStatus];
+    const taxableIncome = Math.max(0, income - standardDeduction);
+
+    const singleBrackets = [
+      { min: 0, max: 11925, rate: 10 },
+      { min: 11925, max: 48475, rate: 12 },
+      { min: 48475, max: 103350, rate: 22 },
+      { min: 103350, max: 197300, rate: 24 },
+      { min: 197300, max: 250525, rate: 32 },
+      { min: 250525, max: 626350, rate: 35 },
+      { min: 626350, max: null as number | null, rate: 37 },
+    ];
+
+    const multiplier = filingStatus === "MFJ" ? 2 : 1;
+    const brackets = singleBrackets.map((b) => ({
+      min: b.min * multiplier,
+      max: b.max === null ? null : b.max * multiplier,
+      rate: b.rate,
+      slab: b.max === null
+        ? `Over ${formatUSD(b.min * multiplier)}`
+        : `${formatUSD(b.min + 1)} - ${formatUSD(b.max * multiplier)}`,
+    }));
+
+    const bracketRows = brackets.map((b) => {
+      const upper = b.max ?? Number.POSITIVE_INFINITY;
+      const taxable = Math.max(0, Math.min(taxableIncome, upper) - b.min);
+      const tax = taxable * b.rate / 100;
+      return { slab: b.slab, taxable, rate: b.rate, tax };
+    });
+    const federalTax = bracketRows.reduce((sum, row) => sum + row.tax, 0);
+    const marginalRate = bracketRows.reduce((rate, row) => (row.taxable > 0 ? row.rate : rate), 0);
+
+    const socialSecurity = Math.min(income, 176100) * 0.062;
+    const medicareBase = income * 0.0145;
+    const additionalMedicare = income > 200000 ? (income - 200000) * 0.009 : 0;
+    const medicare = medicareBase + additionalMedicare;
+
+    const totalTax = federalTax + socialSecurity + medicare;
+    const takeHome = Math.max(0, income - totalTax);
+    const effectiveRate = income > 0 ? totalTax / income * 100 : 0;
+
+    setResult({
+      federalTax,
+      socialSecurity,
+      medicare,
+      totalTax,
+      effectiveRate,
+      marginalRate,
+      takeHome,
+      taxableIncome,
+      bracketRows,
+    });
+  }, [annualIncome, filingStatus, taxYear]);
+
+  return (
+    <CalculatorShell
+      title="US Federal Income Tax Calculator"
+      subtitle="Federal tax, FICA and take-home estimate"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <NumberInput label="Annual Income (USD)" value={annualIncome} onChange={setAnnualIncome} />
+
+          <Field label="Filing Status">
+            <div className="grid grid-cols-2 gap-2">
+              {(["Single", "MFJ", "MFS", "HoH"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setFilingStatus(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md border transition-all",
+                    filingStatus === item
+                      ? "bg-gradient-orange text-white glow-orange border-transparent"
+                      : "text-secondary border-white/10 hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Tax Year">
+            <input
+              value={taxYear}
+              onChange={(e) => setTaxYear(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Taxable Income" value={formatUSD(result.taxableIncome)} />
+            <MiniStat label="Federal Tax" value={formatUSD(result.federalTax)} />
+            <MiniStat label="Social Security" value={formatUSD(result.socialSecurity)} />
+            <MiniStat label="Medicare" value={formatUSD(result.medicare)} />
+            <MiniStat label="Total Tax" value={formatUSD(result.totalTax)} />
+            <MiniStat label="Take Home" value={formatUSD(result.takeHome)} green />
+            <MiniStat label="Effective Rate" value={formatPct(result.effectiveRate)} />
+            <MiniStat label="Marginal Rate" value={formatPct(result.marginalRate)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Federal Bracket Breakdown</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Bracket</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Taxed</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.bracketRows.map((row, index) => (
+                    <tr key={`${row.slab}-${row.rate}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.slab}</td>
+                      <td className="px-3 py-2 text-right">{formatUSD(row.taxable)}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatUSD(row.tax)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function UAEVATCalc() {
+  const [amount, setAmount] = useState("10000");
+  const [vatRate, setVatRate] = useState<5 | 0>(5);
+  const [direction, setDirection] = useState<"add" | "remove">("add");
+  const [result, setResult] = useState({
+    baseAmount: 0,
+    vatAmount: 0,
+    totalAmount: 0,
+    estimatedQuarterlyVAT: 0,
+    vatRegistrationThreshold: 375000,
+  });
+
+  useEffect(() => {
+    const inputAmount = Math.max(0, toNum(amount));
+    const rate = vatRate / 100;
+    let baseAmount = 0;
+    let vatAmount = 0;
+    let totalAmount = 0;
+
+    if (direction === "add") {
+      baseAmount = inputAmount;
+      vatAmount = baseAmount * rate;
+      totalAmount = baseAmount + vatAmount;
+    } else {
+      totalAmount = inputAmount;
+      baseAmount = rate > 0 ? totalAmount / (1 + rate) : totalAmount;
+      vatAmount = totalAmount - baseAmount;
+    }
+
+    const estimatedQuarterlyVAT = vatAmount * 4;
+    setResult({
+      baseAmount,
+      vatAmount,
+      totalAmount,
+      estimatedQuarterlyVAT,
+      vatRegistrationThreshold: 375000,
+    });
+  }, [amount, vatRate, direction]);
+
+  return (
+    <CalculatorShell
+      title="UAE VAT Calculator"
+      subtitle="Add or remove VAT with quarterly liability estimate"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <NumberInput label="Amount (AED)" value={amount} onChange={setAmount} />
+
+          <Field label="VAT Rate">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {([5, 0] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setVatRate(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    vatRate === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}%
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Direction">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {([
+                { key: "add", label: "Add VAT" },
+                { key: "remove", label: "Remove VAT" },
+              ] as const).map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setDirection(item.key)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    direction === item.key ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Base Amount" value={formatAED(result.baseAmount)} />
+            <MiniStat label="VAT Amount" value={formatAED(result.vatAmount)} />
+            <MiniStat label="Total Amount" value={formatAED(result.totalAmount)} green />
+            <MiniStat label="Estimated Quarterly VAT" value={formatAED(result.estimatedQuarterlyVAT)} />
+            <MiniStat label="Registration Threshold" value={formatAED(result.vatRegistrationThreshold)} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            VAT registration required if taxable supplies exceed AED 375,000/year.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function UKVATCalc() {
+  const [amount, setAmount] = useState("1000");
+  const [vatRate, setVatRate] = useState<20 | 5 | 0>(20);
+  const [direction, setDirection] = useState<"add" | "remove">("add");
+  const [result, setResult] = useState({
+    netAmount: 0,
+    vatAmount: 0,
+    grossAmount: 0,
+    flatRateSchemeEstimate: 0,
+    threshold: 90000,
+    hmrcReference: "HMRC VAT Notice 700",
+  });
+
+  useEffect(() => {
+    const inputAmount = Math.max(0, toNum(amount));
+    const rate = vatRate / 100;
+    let netAmount = 0;
+    let vatAmount = 0;
+    let grossAmount = 0;
+
+    if (direction === "add") {
+      netAmount = inputAmount;
+      vatAmount = netAmount * rate;
+      grossAmount = netAmount + vatAmount;
+    } else {
+      grossAmount = inputAmount;
+      netAmount = rate > 0 ? grossAmount / (1 + rate) : grossAmount;
+      vatAmount = grossAmount - netAmount;
+    }
+
+    const flatRateSchemeEstimate = netAmount * 0.12;
+    setResult({
+      netAmount,
+      vatAmount,
+      grossAmount,
+      flatRateSchemeEstimate,
+      threshold: 90000,
+      hmrcReference: "HMRC VAT Notice 700",
+    });
+  }, [amount, vatRate, direction]);
+
+  return (
+    <CalculatorShell
+      title="UK VAT Calculator"
+      subtitle="Add/remove UK VAT with flat rate comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <NumberInput label="Amount (GBP)" value={amount} onChange={setAmount} />
+
+          <Field label="VAT Rate">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {([20, 5, 0] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setVatRate(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    vatRate === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}%
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Direction">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {([
+                { key: "add", label: "Add VAT" },
+                { key: "remove", label: "Remove VAT" },
+              ] as const).map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setDirection(item.key)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    direction === item.key ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Net Amount" value={formatGBP(result.netAmount)} />
+            <MiniStat label="VAT Amount" value={formatGBP(result.vatAmount)} />
+            <MiniStat label="Gross Amount" value={formatGBP(result.grossAmount)} green />
+            <MiniStat label="Flat Rate Estimate (12%)" value={formatGBP(result.flatRateSchemeEstimate)} />
+            <MiniStat label="VAT Threshold" value={formatGBP(result.threshold)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            HMRC reference: {result.hmrcReference}
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            VAT registration required if taxable turnover exceeds £90,000.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SGIncomeTaxCalc() {
+  const [annualIncome, setAnnualIncome] = useState("90000");
+  const [residencyStatus, setResidencyStatus] = useState<"Tax Resident" | "Non-Resident">("Tax Resident");
+  const [result, setResult] = useState({
+    incomeTax: 0,
+    cpfContribution: 0,
+    effectiveRate: 0,
+    slabRows: [] as Array<{ slab: string; taxable: number; rate: number; tax: number }>,
+  });
+
+  useEffect(() => {
+    const income = Math.max(0, toNum(annualIncome));
+    const residentSlabs = [
+      { min: 0, max: 20000, rate: 0, slab: "$0 - $20,000" },
+      { min: 20000, max: 30000, rate: 2, slab: "$20,001 - $30,000" },
+      { min: 30000, max: 40000, rate: 3.5, slab: "$30,001 - $40,000" },
+      { min: 40000, max: 80000, rate: 7, slab: "$40,001 - $80,000" },
+      { min: 80000, max: 120000, rate: 11.5, slab: "$80,001 - $120,000" },
+      { min: 120000, max: 160000, rate: 15, slab: "$120,001 - $160,000" },
+      { min: 160000, max: 200000, rate: 18, slab: "$160,001 - $200,000" },
+      { min: 200000, max: 240000, rate: 19, slab: "$200,001 - $240,000" },
+      { min: 240000, max: 280000, rate: 20, slab: "$240,001 - $280,000" },
+      { min: 280000, max: 320000, rate: 22, slab: "$280,001 - $320,000" },
+      { min: 320000, max: null as number | null, rate: 24, slab: "Above $320,000" },
+    ];
+
+    const slabRows = residentSlabs.map((slab) => {
+      const upper = slab.max ?? Number.POSITIVE_INFINITY;
+      const taxable = Math.max(0, Math.min(income, upper) - slab.min);
+      const tax = taxable * slab.rate / 100;
+      return { slab: slab.slab, taxable, rate: slab.rate, tax };
+    });
+
+    const residentTax = slabRows.reduce((sum, row) => sum + row.tax, 0);
+    const nonResidentFlat = income * 0.15;
+    const incomeTax = residencyStatus === "Tax Resident" ? residentTax : Math.max(nonResidentFlat, residentTax);
+
+    const cpfCapAnnual = 6800 * 12;
+    const cpfContribution = residencyStatus === "Tax Resident" ? Math.min(income, cpfCapAnnual) * 0.2 : 0;
+    const effectiveRate = income > 0 ? incomeTax / income * 100 : 0;
+
+    setResult({
+      incomeTax,
+      cpfContribution,
+      effectiveRate,
+      slabRows,
+    });
+  }, [annualIncome, residencyStatus]);
+
+  return (
+    <CalculatorShell
+      title="Singapore Income Tax Calculator"
+      subtitle="Resident slab tax, CPF and non-resident comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <NumberInput label="Annual Income (SGD)" value={annualIncome} onChange={setAnnualIncome} />
+
+          <Field label="Residency Status">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Tax Resident", "Non-Resident"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setResidencyStatus(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    residencyStatus === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Income Tax" value={formatSGD(result.incomeTax)} />
+            <MiniStat label="CPF Contribution" value={formatSGD(result.cpfContribution)} />
+            <MiniStat label="Effective Rate" value={formatPct(result.effectiveRate)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Slab Breakdown (Resident Rates)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Slab</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Taxed</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.slabRows.map((row, index) => (
+                    <tr key={row.slab} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.slab}</td>
+                      <td className="px-3 py-2 text-right">{formatSGD(row.taxable)}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatSGD(row.tax)}</td>
                     </tr>
                   ))}
                 </tbody>
