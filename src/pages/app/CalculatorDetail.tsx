@@ -29,6 +29,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "rental-yield": RentalYieldCalc,
   npv: NPVCalc,
   tds: TDSCalc,
+  ppf: PPFCalc,
+  slm: SLMCalc,
+  materiality: MaterialityCalc,
+  "stamp-duty": StampDutyCalc,
+  wacc: WACCCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -52,6 +57,11 @@ const titleMap: Record<string, string> = {
   "rental-yield": "Rental Yield Calculator",
   npv: "NPV Calculator",
   tds: "TDS Calculator",
+  ppf: "PPF Calculator",
+  slm: "Straight Line Depreciation",
+  materiality: "Audit Materiality Calculator",
+  "stamp-duty": "Stamp Duty Calculator",
+  wacc: "WACC Calculator",
 };
 
 const categoryMap: Record<string, string> = {
@@ -75,6 +85,11 @@ const categoryMap: Record<string, string> = {
   "rental-yield": "realestate",
   npv: "valuation",
   tds: "tax",
+  ppf: "investment",
+  slm: "depreciation",
+  materiality: "audit",
+  "stamp-duty": "realestate",
+  wacc: "valuation",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -147,6 +162,16 @@ const TDS_CONFIG = {
     residentRate: 10,
     nriRate: 20,
   },
+} as const;
+
+const STAMP_DUTY_RATES = {
+  Maharashtra: { residential: 5, commercial: 6 },
+  Karnataka: { residential: 5.6, commercial: 5.6 },
+  Delhi: { residentialWomen: 4, residentialMen: 6, commercial: 6 },
+  "Tamil Nadu": { residential: 7, commercial: 7 },
+  Gujarat: { residential: 4.9, commercial: 4.9 },
+  Telangana: { residential: 5, commercial: 5 },
+  Rajasthan: { residential: 5, commercial: 6 },
 } as const;
 
 type TdsPaymentType = keyof typeof TDS_CONFIG;
@@ -2241,6 +2266,576 @@ function TDSCalc() {
             <MiniStat label="Threshold Limit" value={formatINR(result.thresholdLimit)} />
             <MiniStat label="Rate Used" value={formatPct(result.rateUsed)} />
             <MiniStat label="Due Date for Deposit" value={result.dueDate} />
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PPFCalc() {
+  const [annualInvestment, setAnnualInvestment] = useState("150000");
+  const [years, setYears] = useState("15");
+  const [result, setResult] = useState({
+    maturityAmount: 0,
+    totalInvested: 0,
+    totalInterest: 0,
+    effectiveReturn: 0,
+    taxBenefit80C: 0,
+    usedYears: 15,
+    schedule: [] as Array<{ year: number; investment: number; interest: number; balance: number }>,
+  });
+
+  useEffect(() => {
+    const investment = toNum(annualInvestment);
+    const yearInput = Math.floor(toNum(years));
+    const usedYears = Math.min(50, Math.max(15, yearInput || 15));
+
+    let balance = 0;
+    const schedule: Array<{ year: number; investment: number; interest: number; balance: number }> = [];
+
+    for (let year = 1; year <= usedYears; year += 1) {
+      const opening = balance;
+      balance = (opening + investment) * 1.071;
+      const interest = balance - opening - investment;
+      schedule.push({
+        year,
+        investment,
+        interest,
+        balance,
+      });
+    }
+
+    const totalInvested = investment * usedYears;
+    const maturityAmount = balance;
+    const totalInterest = maturityAmount - totalInvested;
+    const effectiveReturn = totalInvested > 0 ? (totalInterest / totalInvested) * 100 : 0;
+    const taxBenefit80C = Math.min(investment, 150000);
+
+    setResult({
+      maturityAmount,
+      totalInvested,
+      totalInterest,
+      effectiveReturn,
+      taxBenefit80C,
+      usedYears,
+      schedule,
+    });
+  }, [annualInvestment, years]);
+
+  return (
+    <CalculatorShell
+      title="PPF Calculator"
+      subtitle="7.1% annual compounding with year-wise growth"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Annual Investment" value={annualInvestment} onChange={setAnnualInvestment} />
+          <NumberInput label="Years (15 to 50)" value={years} onChange={setYears} />
+          <div className="text-xs text-tertiary">Using {result.usedYears} years for calculation.</div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Maturity Amount" value={formatINR(result.maturityAmount)} green />
+            <MiniStat label="Total Invested" value={formatINR(result.totalInvested)} />
+            <MiniStat label="Interest Earned" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Effective Return" value={formatPct(result.effectiveReturn)} />
+            <MiniStat label="80C Deduction (Yearly)" value={formatINR(result.taxBenefit80C)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Year-wise PPF Schedule</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Investment</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Interest</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.schedule.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.investment)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.interest)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SLMCalc() {
+  const [assetName, setAssetName] = useState("Asset");
+  const [purchaseCost, setPurchaseCost] = useState("1000000");
+  const [salvageValue, setSalvageValue] = useState("100000");
+  const [usefulLifeYears, setUsefulLifeYears] = useState("10");
+  const [result, setResult] = useState({
+    annualDepreciation: 0,
+    depreciationRate: 0,
+    totalDepreciation: 0,
+    usedYears: 0,
+    table: [] as Array<{ year: number; depreciation: number; accumulated: number; bookValue: number }>,
+  });
+
+  useEffect(() => {
+    const cost = toNum(purchaseCost);
+    const salvage = Math.min(cost, toNum(salvageValue));
+    const yearsNum = Math.max(1, Math.floor(toNum(usefulLifeYears)));
+
+    const annualDepreciation = yearsNum > 0 ? (cost - salvage) / yearsNum : 0;
+    const depreciationRate = cost > 0 ? (annualDepreciation / cost) * 100 : 0;
+
+    const table: Array<{ year: number; depreciation: number; accumulated: number; bookValue: number }> = [];
+    for (let year = 1; year <= yearsNum; year += 1) {
+      const accumulated = annualDepreciation * year;
+      const bookValue = Math.max(salvage, cost - accumulated);
+      table.push({
+        year,
+        depreciation: annualDepreciation,
+        accumulated,
+        bookValue,
+      });
+    }
+
+    const totalDepreciation = annualDepreciation * yearsNum;
+
+    setResult({
+      annualDepreciation,
+      depreciationRate,
+      totalDepreciation,
+      usedYears: yearsNum,
+      table,
+    });
+  }, [purchaseCost, salvageValue, usefulLifeYears]);
+
+  return (
+    <CalculatorShell
+      title="Straight Line Depreciation"
+      subtitle="Uniform annual depreciation over useful life"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <Field label="Asset Name">
+            <input
+              value={assetName}
+              onChange={(e) => setAssetName(e.target.value)}
+              placeholder="Asset"
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+
+          <MoneyInput label="Purchase Cost" value={purchaseCost} onChange={setPurchaseCost} />
+          <MoneyInput label="Salvage Value" value={salvageValue} onChange={setSalvageValue} />
+          <NumberInput label="Useful Life (Years)" value={usefulLifeYears} onChange={setUsefulLifeYears} />
+          <div className="text-xs text-tertiary">Asset: {assetName || "Asset"} | Years: {result.usedYears}</div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Annual Depreciation" value={formatINR(result.annualDepreciation)} />
+            <MiniStat label="Depreciation Rate" value={formatPct(result.depreciationRate)} />
+            <MiniStat label="Total Depreciation" value={formatINR(result.totalDepreciation)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Straight Line Schedule</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Depreciation</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Accumulated</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Book Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.table.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.depreciation)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.accumulated)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.bookValue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function MaterialityCalc() {
+  const [totalRevenue, setTotalRevenue] = useState("50000000");
+  const [totalAssets, setTotalAssets] = useState("80000000");
+  const [netProfit, setNetProfit] = useState("7000000");
+  const [benchmark, setBenchmark] = useState<"revenue" | "assets" | "profit">("revenue");
+  const [result, setResult] = useState({
+    revenueMateriality: 0,
+    assetsMateriality: 0,
+    profitMateriality: 0,
+    planningMateriality: 0,
+    performanceMateriality: 0,
+    trivialAmount: 0,
+  });
+
+  useEffect(() => {
+    const revenue = toNum(totalRevenue);
+    const assets = toNum(totalAssets);
+    const profit = Math.abs(toNum(netProfit));
+
+    const revenueMateriality = revenue * 0.0075;
+    const assetsMateriality = assets * 0.015;
+    const profitMateriality = profit * 0.075;
+
+    const planningMateriality = benchmark === "revenue"
+      ? revenueMateriality
+      : benchmark === "assets"
+        ? assetsMateriality
+        : profitMateriality;
+
+    const performanceMateriality = planningMateriality * 0.75;
+    const trivialAmount = planningMateriality * 0.04;
+
+    setResult({
+      revenueMateriality,
+      assetsMateriality,
+      profitMateriality,
+      planningMateriality,
+      performanceMateriality,
+      trivialAmount,
+    });
+  }, [totalRevenue, totalAssets, netProfit, benchmark]);
+
+  return (
+    <CalculatorShell
+      title="Audit Materiality Calculator"
+      subtitle="Planning, performance and trivial thresholds"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Total Revenue" value={totalRevenue} onChange={setTotalRevenue} />
+          <MoneyInput label="Total Assets" value={totalAssets} onChange={setTotalAssets} />
+          <MoneyInput label="Net Profit" value={netProfit} onChange={setNetProfit} />
+
+          <Field label="Benchmark">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["revenue", "assets", "profit"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setBenchmark(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all capitalize",
+                    benchmark === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Revenue (0.5% - 1%)</div>
+              <div className="mt-2 text-lg font-bold">{formatINR(result.revenueMateriality)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Assets (1% - 2%)</div>
+              <div className="mt-2 text-lg font-bold">{formatINR(result.assetsMateriality)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">Net Profit (5% - 10%)</div>
+              <div className="mt-2 text-lg font-bold">{formatINR(result.profitMateriality)}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <MiniStat label="Planning Materiality" value={formatINR(result.planningMateriality)} green />
+            <MiniStat label="Performance Materiality (75%)" value={formatINR(result.performanceMateriality)} />
+            <MiniStat label="Trivial Threshold (4%)" value={formatINR(result.trivialAmount)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Based on ISA 320 / SA 320 guidelines
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function StampDutyCalc() {
+  const states = Object.keys(STAMP_DUTY_RATES) as Array<keyof typeof STAMP_DUTY_RATES>;
+  const [propertyValue, setPropertyValue] = useState("8000000");
+  const [state, setState] = useState<keyof typeof STAMP_DUTY_RATES>("Maharashtra");
+  const [propertyType, setPropertyType] = useState<"residential" | "commercial">("residential");
+  const [ownerGender, setOwnerGender] = useState<"women" | "men">("women");
+  const [result, setResult] = useState({
+    stampDuty: 0,
+    registrationCharge: 0,
+    totalCharges: 0,
+    effectiveRate: 0,
+    appliedRate: 0,
+    rows: [] as Array<{ state: string; rate: number; stampDuty: number; registration: number; total: number }>,
+  });
+
+  useEffect(() => {
+    const value = toNum(propertyValue);
+
+    const getRate = (
+      itemState: keyof typeof STAMP_DUTY_RATES,
+      itemPropertyType: "residential" | "commercial",
+      gender: "women" | "men"
+    ) => {
+      if (itemState === "Delhi" && itemPropertyType === "residential") {
+        return gender === "women"
+          ? STAMP_DUTY_RATES.Delhi.residentialWomen
+          : STAMP_DUTY_RATES.Delhi.residentialMen;
+      }
+      if (itemState === "Delhi") {
+        return STAMP_DUTY_RATES.Delhi.commercial;
+      }
+      return STAMP_DUTY_RATES[itemState][itemPropertyType];
+    };
+
+    const appliedRate = getRate(state, propertyType, ownerGender);
+    const stampDuty = value * (appliedRate / 100);
+    const registrationCharge = value * 0.01;
+    const totalCharges = stampDuty + registrationCharge;
+    const effectiveRate = value > 0 ? (totalCharges / value) * 100 : 0;
+
+    const rows: Array<{ state: string; rate: number; stampDuty: number; registration: number; total: number }> = [];
+    states.forEach((item) => {
+      if (item === "Delhi" && propertyType === "residential") {
+        ["women", "men"].forEach((gender) => {
+          const rate = getRate(item, propertyType, gender as "women" | "men");
+          const rowStampDuty = value * (rate / 100);
+          const rowRegistration = value * 0.01;
+          rows.push({
+            state: `Delhi (${gender === "women" ? "Women" : "Men"})`,
+            rate,
+            stampDuty: rowStampDuty,
+            registration: rowRegistration,
+            total: rowStampDuty + rowRegistration,
+          });
+        });
+      } else {
+        const rate = getRate(item, propertyType, ownerGender);
+        const rowStampDuty = value * (rate / 100);
+        const rowRegistration = value * 0.01;
+        rows.push({
+          state: item,
+          rate,
+          stampDuty: rowStampDuty,
+          registration: rowRegistration,
+          total: rowStampDuty + rowRegistration,
+        });
+      }
+    });
+
+    setResult({
+      stampDuty,
+      registrationCharge,
+      totalCharges,
+      effectiveRate,
+      appliedRate,
+      rows,
+    });
+  }, [propertyValue, state, propertyType, ownerGender]);
+
+  return (
+    <CalculatorShell
+      title="Stamp Duty Calculator"
+      subtitle="State-wise stamp duty and registration charges"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Property Value" value={propertyValue} onChange={setPropertyValue} />
+
+          <Field label="State">
+            <select
+              value={state}
+              onChange={(e) => setState(e.target.value as keyof typeof STAMP_DUTY_RATES)}
+              className="glass-select w-full h-11 px-3 rounded-[10px] text-sm focus:outline-none focus:border-[rgba(249,115,22,0.5)]"
+            >
+              {states.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Property Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["residential", "commercial"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setPropertyType(item)}
+                  className={cn(
+                    "py-2 text-sm font-medium rounded-md transition-all capitalize",
+                    propertyType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {state === "Delhi" && propertyType === "residential" && (
+            <Field label="Owner Gender (Delhi residential)">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+                {(["women", "men"] as const).map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setOwnerGender(item)}
+                    className={cn(
+                      "py-2 text-sm font-medium rounded-md transition-all capitalize",
+                      ownerGender === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                    )}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Stamp Duty" value={formatINR(result.stampDuty)} />
+            <MiniStat label="Registration Charge (1%)" value={formatINR(result.registrationCharge)} />
+            <MiniStat label="Total Charges" value={formatINR(result.totalCharges)} green />
+            <MiniStat label="Effective Rate" value={formatPct(result.effectiveRate)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-xs text-secondary">
+            Applied Stamp Duty Rate: {formatPct(result.appliedRate)}
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">All States Comparison</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">State</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Stamp Duty</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Registration</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={`${row.state}-${index}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.state}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.stampDuty)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.registration)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function WACCCalc() {
+  const [equityValue, setEquityValue] = useState("5000000");
+  const [debtValue, setDebtValue] = useState("3000000");
+  const [costOfEquity, setCostOfEquity] = useState("14");
+  const [costOfDebt, setCostOfDebt] = useState("9");
+  const [taxRate, setTaxRate] = useState("25");
+  const [result, setResult] = useState({
+    wacc: 0,
+    weightEquity: 0,
+    weightDebt: 0,
+    afterTaxCostOfDebt: 0,
+    formulaText: "",
+  });
+
+  useEffect(() => {
+    const equity = toNum(equityValue);
+    const debt = toNum(debtValue);
+    const coe = toNum(costOfEquity);
+    const cod = toNum(costOfDebt);
+    const tax = toNum(taxRate);
+
+    const totalCapital = equity + debt;
+    const weightEquity = totalCapital > 0 ? equity / totalCapital : 0;
+    const weightDebt = totalCapital > 0 ? debt / totalCapital : 0;
+    const afterTaxCostOfDebt = cod * (1 - tax / 100);
+    const wacc = (weightEquity * coe) + (weightDebt * afterTaxCostOfDebt);
+
+    const formulaText = `(${weightEquity.toFixed(4)} x ${coe.toFixed(2)}%) + (${weightDebt.toFixed(4)} x ${afterTaxCostOfDebt.toFixed(2)}%) = ${wacc.toFixed(2)}%`;
+
+    setResult({
+      wacc,
+      weightEquity: weightEquity * 100,
+      weightDebt: weightDebt * 100,
+      afterTaxCostOfDebt,
+      formulaText,
+    });
+  }, [equityValue, debtValue, costOfEquity, costOfDebt, taxRate]);
+
+  return (
+    <CalculatorShell
+      title="WACC Calculator"
+      subtitle="Weighted average cost of capital"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Equity Value" value={equityValue} onChange={setEquityValue} />
+          <MoneyInput label="Debt Value" value={debtValue} onChange={setDebtValue} />
+          <NumberInput label="Cost of Equity (%)" value={costOfEquity} onChange={setCostOfEquity} />
+          <NumberInput label="Cost of Debt (%)" value={costOfDebt} onChange={setCostOfDebt} />
+          <NumberInput label="Tax Rate (%)" value={taxRate} onChange={setTaxRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="WACC" value={formatPct(result.wacc)} green />
+            <MiniStat label="Weight Equity" value={formatPct(result.weightEquity)} />
+            <MiniStat label="Weight Debt" value={formatPct(result.weightDebt)} />
+            <MiniStat label="After-tax Cost of Debt" value={formatPct(result.afterTaxCostOfDebt)} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10">
+            <div className="text-xs uppercase tracking-wide text-tertiary">Formula with Substituted Values</div>
+            <div className="mt-2 text-sm text-secondary">{result.formulaText}</div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            A project is viable if its return exceeds WACC of {formatPct(result.wacc)}.
           </div>
         </div>
       )}
