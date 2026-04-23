@@ -99,6 +99,16 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "tds-property": TDSPropertyCalc,
   "advance-ruling": AdvanceRulingCalc,
   "customs-duty": CustomsDutyCalc,
+  "pf-withdrawal": PFWithdrawalCalc,
+  "nri-tax": NRITaxCalc,
+  "home-loan-tax": HomeLoanTaxCalc,
+  "itr-form-selector": ITRFormSelectorCalc,
+  "balance-sheet-analysis": BalanceSheetAnalysisCalc,
+  "rebate-87a": Rebate87ACalc,
+  "salary-restructure": SalaryRestructureCalc,
+  "interest-income": InterestIncomeCalc,
+  "ltcg-mutual-fund": LTCGMutualFundCalc,
+  "professional-tax": ProfessionalTaxCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -192,6 +202,16 @@ const titleMap: Record<string, string> = {
   "tds-property": "TDS on Property Purchase (Section 194IA)",
   "advance-ruling": "GST Liability Quick Estimator",
   "customs-duty": "Import Customs Duty Calculator",
+  "pf-withdrawal": "PF Withdrawal Tax Calculator",
+  "nri-tax": "NRI Income Tax Calculator",
+  "home-loan-tax": "Home Loan Tax Benefit Calculator",
+  "itr-form-selector": "ITR Form Selector & Filing Guide",
+  "balance-sheet-analysis": "Balance Sheet Strength Analyser",
+  "rebate-87a": "Section 87A Rebate Calculator",
+  "salary-restructure": "Salary Restructuring Optimizer",
+  "interest-income": "Interest Income Tax Calculator",
+  "ltcg-mutual-fund": "Mutual Fund Capital Gains Calculator",
+  "professional-tax": "Professional Tax Calculator (State-wise)",
 };
 
 const categoryMap: Record<string, string> = {
@@ -285,6 +305,16 @@ const categoryMap: Record<string, string> = {
   "tds-property": "tax",
   "advance-ruling": "gst",
   "customs-duty": "gst",
+  "pf-withdrawal": "payroll",
+  "nri-tax": "tax",
+  "home-loan-tax": "loans",
+  "itr-form-selector": "tax",
+  "balance-sheet-analysis": "ratios",
+  "rebate-87a": "tax",
+  "salary-restructure": "payroll",
+  "interest-income": "tax",
+  "ltcg-mutual-fund": "investment",
+  "professional-tax": "payroll",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -11160,6 +11190,870 @@ function CustomsDutyCalc() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PFWithdrawalCalc() {
+  const [totalPFBalance, setTotalPFBalance] = useState("420000");
+  const [yearsOfService, setYearsOfService] = useState("3");
+  const [reason, setReason] = useState<"Resignation" | "Retirement" | "Medical" | "Housing">("Resignation");
+  const [hasPAN, setHasPAN] = useState(true);
+  const [result, setResult] = useState({ taxableAmount: 0, tdsDeductible: 0, netAmount: 0, note: "", formNote: "" });
+
+  useEffect(() => {
+    const balance = toNum(totalPFBalance);
+    const years = toNum(yearsOfService);
+    const taxableAmount = reason === "Resignation" && years < 5 ? balance : 0;
+    const tdsDeductible = taxableAmount * (hasPAN ? 0.1 : 0.34608);
+    const netAmount = balance - tdsDeductible;
+    const note = reason === "Resignation" && years < 5 ? "Taxable because service is under 5 years on resignation." : "Exempt under applicable PF withdrawal rules.";
+    const formNote = taxableAmount > 0 ? "Form 15G/15H generally not applicable unless overall income is below taxable limits." : "Form 15G/15H not required for exempt withdrawal.";
+    setResult({ taxableAmount, tdsDeductible, netAmount, note, formNote });
+  }, [totalPFBalance, yearsOfService, reason, hasPAN]);
+
+  return (
+    <CalculatorShell
+      title="PF Withdrawal Tax Calculator"
+      subtitle="Tax and TDS estimation on employee provident fund withdrawal"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Total PF Balance" value={totalPFBalance} onChange={setTotalPFBalance} />
+          <NumberInput label="Years of Service" value={yearsOfService} onChange={setYearsOfService} />
+          <Field label="Reason">
+            <select value={reason} onChange={(e) => setReason(e.target.value as "Resignation" | "Retirement" | "Medical" | "Housing")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Resignation", "Retirement", "Medical", "Housing"] as const).map((item) => (<option key={item} value={item}>{item}</option>))}
+            </select>
+          </Field>
+          <Field label="PAN Provided">
+            <button onClick={() => setHasPAN((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", hasPAN ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{hasPAN ? "Yes" : "No"}</button>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Taxable Amount" value={`₹ ${result.taxableAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="TDS Deductible" value={`₹ ${result.tdsDeductible.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Net Amount" value={`₹ ${result.netAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.note}</div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.formNote}</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function NRITaxCalc() {
+  const [indianSourceIncome, setIndianSourceIncome] = useState("1200000");
+  const [incomeType, setIncomeType] = useState<"Salary" | "Rent" | "Interest" | "Capital Gains" | "Dividend">("Salary");
+  const [capitalGainNature, setCapitalGainNature] = useState<"LTCG" | "STCG">("LTCG");
+  const [residencyStatus, setResidencyStatus] = useState<"NRI" | "RNOR" | "Resident">("NRI");
+  const [result, setResult] = useState({ taxLiability: 0, effectiveRate: 0, tdsLikelyDeducted: 0, refundOrPayable: 0, dtaaNote: "" });
+
+  useEffect(() => {
+    const income = toNum(indianSourceIncome);
+    let taxLiability = 0;
+    if (incomeType === "Salary") {
+      taxLiability = calculateSlabTax(income, NEW_REGIME_SLABS).baseTax * 1.04;
+    } else if (incomeType === "Rent") {
+      taxLiability = income * 0.7 * 0.3 * 1.04;
+    } else if (incomeType === "Interest") {
+      taxLiability = income * 0.3 * 1.04;
+    } else if (incomeType === "Capital Gains") {
+      taxLiability = income * (capitalGainNature === "LTCG" ? 0.125 : 0.2);
+    } else {
+      taxLiability = income * 0.2 * 1.04;
+    }
+    if (residencyStatus === "Resident" && incomeType !== "Salary") {
+      taxLiability *= 1;
+    }
+    const tdsLikelyDeducted = income * 0.3;
+    const refundOrPayable = taxLiability - tdsLikelyDeducted;
+    const effectiveRate = income > 0 ? (taxLiability / income) * 100 : 0;
+    const dtaaNote = incomeType === "Dividend" || incomeType === "Interest"
+      ? "DTAA relief may cap dividend/interest withholding at 15% for major treaty countries."
+      : "DTAA may apply based on specific treaty article and country of residence.";
+    setResult({ taxLiability, effectiveRate, tdsLikelyDeducted, refundOrPayable, dtaaNote });
+  }, [indianSourceIncome, incomeType, capitalGainNature, residencyStatus]);
+
+  return (
+    <CalculatorShell
+      title="NRI Income Tax Calculator"
+      subtitle="Tax estimate on Indian-source income for NRI / RNOR / resident cases"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Indian Source Income" value={indianSourceIncome} onChange={setIndianSourceIncome} />
+          <Field label="Income Type">
+            <select value={incomeType} onChange={(e) => setIncomeType(e.target.value as "Salary" | "Rent" | "Interest" | "Capital Gains" | "Dividend")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Salary", "Rent", "Interest", "Capital Gains", "Dividend"] as const).map((item) => (<option key={item} value={item}>{item}</option>))}
+            </select>
+          </Field>
+          {incomeType === "Capital Gains" && (
+            <Field label="Capital Gain Nature">
+              <select value={capitalGainNature} onChange={(e) => setCapitalGainNature(e.target.value as "LTCG" | "STCG")} className="glass-input w-full h-11 px-3 text-sm">
+                <option value="LTCG">LTCG Equity</option>
+                <option value="STCG">STCG Equity</option>
+              </select>
+            </Field>
+          )}
+          <Field label="Residency Status">
+            <div className="grid grid-cols-3 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["NRI", "RNOR", "Resident"] as const).map((status) => (
+                <button key={status} onClick={() => setResidencyStatus(status)} className={cn("py-2 text-xs font-medium rounded-md transition-all", residencyStatus === status ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{status}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Tax Liability" value={`₹ ${result.taxLiability.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Effective Rate" value={`${result.effectiveRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="TDS Likely Deducted" value={`₹ ${result.tdsLikelyDeducted.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label={result.refundOrPayable >= 0 ? "Payable" : "Refund"} value={`₹ ${Math.abs(result.refundOrPayable).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green={result.refundOrPayable < 0} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.dtaaNote}</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function HomeLoanTaxCalc() {
+  const [loanAmount, setLoanAmount] = useState("4500000");
+  const [interestRate, setInterestRate] = useState("8.5");
+  const [tenureYears, setTenureYears] = useState("20");
+  const [propertyType, setPropertyType] = useState<"Self-occupied" | "Let-out">("Self-occupied");
+  const [annualRent, setAnnualRent] = useState("240000");
+  const [ownershipType, setOwnershipType] = useState<"Sole" | "Joint 50-50">("Sole");
+  const [affordableHousing, setAffordableHousing] = useState(false);
+  const [result, setResult] = useState({ annualEMI: 0, annualInterest: 0, annualPrincipal: 0, section24Deduction: 0, section80CDeduction: 0, section80EEDeduction: 0, totalDeduction: 0, taxSavingAt30: 0, taxSavingAt20: 0, netCostOfLoan: 0, rentalNetImpact: 0, rows: [] as Array<{ year: number; opening: number; interest: number; principal: number; closing: number }> });
+
+  useEffect(() => {
+    const principal = toNum(loanAmount);
+    const rate = toNum(interestRate);
+    const years = Math.max(1, Math.floor(toNum(tenureYears)));
+    const emi = calculateEMIFromPrincipal(principal, rate, years * 12);
+    let balance = principal;
+    const rows: Array<{ year: number; opening: number; interest: number; principal: number; closing: number }> = [];
+    for (let year = 1; year <= Math.min(5, years); year += 1) {
+      let annualInterest = 0;
+      let annualPrincipal = 0;
+      const opening = balance;
+      for (let m = 0; m < 12 && balance > 0; m += 1) {
+        const monthInterest = balance * rate / 12 / 100;
+        const monthPrincipal = Math.min(emi - monthInterest, balance);
+        annualInterest += monthInterest;
+        annualPrincipal += Math.max(0, monthPrincipal);
+        balance = Math.max(0, balance - monthPrincipal);
+      }
+      rows.push({ year, opening, interest: annualInterest, principal: annualPrincipal, closing: balance });
+    }
+
+    const annualEMI = emi * 12;
+    const annualInterest = rows[0]?.interest ?? 0;
+    const annualPrincipal = rows[0]?.principal ?? 0;
+    const ownershipMultiplier = ownershipType === "Joint 50-50" ? 2 : 1;
+    const section24Deduction = propertyType === "Self-occupied" ? Math.min(annualInterest, 200000) : annualInterest;
+    const section80CDeduction = Math.min(annualPrincipal, 150000);
+    const section80EEDeduction = affordableHousing ? 150000 : 0;
+    const totalDeduction = (section24Deduction + section80CDeduction + section80EEDeduction) * ownershipMultiplier;
+    const taxSavingAt30 = totalDeduction * 0.3;
+    const taxSavingAt20 = totalDeduction * 0.2;
+    const netCostOfLoan = annualInterest - taxSavingAt30;
+    const rentalNetImpact = propertyType === "Let-out" ? toNum(annualRent) - annualInterest : 0;
+
+    setResult({ annualEMI, annualInterest, annualPrincipal, section24Deduction, section80CDeduction, section80EEDeduction, totalDeduction, taxSavingAt30, taxSavingAt20, netCostOfLoan, rentalNetImpact, rows });
+  }, [loanAmount, interestRate, tenureYears, propertyType, annualRent, ownershipType, affordableHousing]);
+
+  return (
+    <CalculatorShell
+      title="Home Loan Tax Benefit Calculator"
+      subtitle="Interest, principal, Section 24 / 80C / 80EEA and year-wise benefit view"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Loan Amount" value={loanAmount} onChange={setLoanAmount} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Tenure (Years)" value={tenureYears} onChange={setTenureYears} />
+          <Field label="Property Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Self-occupied", "Let-out"] as const).map((type) => (<button key={type} onClick={() => setPropertyType(type)} className={cn("py-2 text-xs font-medium rounded-md transition-all", propertyType === type ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{type}</button>))}
+            </div>
+          </Field>
+          {propertyType === "Let-out" && <MoneyInput label="Annual Rent" value={annualRent} onChange={setAnnualRent} />}
+          <Field label="Ownership Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Sole", "Joint 50-50"] as const).map((type) => (<button key={type} onClick={() => setOwnershipType(type)} className={cn("py-2 text-xs font-medium rounded-md transition-all", ownershipType === type ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{type}</button>))}
+            </div>
+          </Field>
+          <Field label="Affordable Housing (80EEA)">
+            <button onClick={() => setAffordableHousing((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", affordableHousing ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{affordableHousing ? "Yes" : "No"}</button>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Annual EMI" value={`₹ ${result.annualEMI.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Annual Interest" value={`₹ ${result.annualInterest.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Annual Principal" value={`₹ ${result.annualPrincipal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Section 24 Deduction" value={`₹ ${result.section24Deduction.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Section 80C Deduction" value={`₹ ${result.section80CDeduction.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Section 80EEA Deduction" value={`₹ ${result.section80EEDeduction.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Deduction" value={`₹ ${result.totalDeduction.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Net Cost of Loan" value={`₹ ${result.netCostOfLoan.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+          </div>
+          {propertyType === "Let-out" && <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Net rental impact after interest: <span className="text-white">₹ {result.rentalNetImpact.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>}
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">First 5 Years</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead><tr className="text-tertiary"><th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Opening</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Interest</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Principal</th><th className="text-right font-medium px-5 py-2 bg-primary/10">Closing</th></tr></thead>
+                <tbody>{result.rows.map((row, index) => (<tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}><td className="px-5 py-2 text-secondary">{row.year.toLocaleString('en-IN')}</td><td className="px-3 py-2 text-right">₹ {row.opening.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-3 py-2 text-right">₹ {row.interest.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-3 py-2 text-right">₹ {row.principal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-5 py-2 text-right">₹ {row.closing.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>))}</tbody>
+              </table>
+            </div>
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Tax saving shown at 30% and 20% slab assumptions.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ITRFormSelectorCalc() {
+  const [entityType, setEntityType] = useState<"Individual" | "Company" | "Firm" | "LLP" | "Trust" | "Political Party" | "AOP/BOI">("Individual");
+  const [answers, setAnswers] = useState({ resident: true, salaryOnly: true, businessIncome: false, turnoverOver2Cr: false, partnerInFirm: false, foreignIncomeAssets: false, capitalGains: false, incomeOver50L: false, companyFirmLlp: false, agriOver5000: false, otherSourcesOnly: false, seniorCitizen: false, broughtForwardLosses: false, presumptiveIncome: false, exemptLtcgOnly: false });
+  const toggle = (key: keyof typeof answers) => setAnswers((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const result = (() => {
+    let form = "ITR-1";
+    let reason = "Salaried individual with simple return profile.";
+    const schedules = new Set<string>();
+    const docs = new Set<string>(["Form 16", "AIS/TIS", "26AS", "Bank statements"]);
+
+    if (entityType === "Company") {
+      form = "ITR-6";
+      reason = "Companies must file ITR-6.";
+    } else if (entityType === "Trust" || entityType === "Political Party") {
+      form = "ITR-7";
+      reason = "Trusts / political parties fall under ITR-7.";
+    } else if (entityType === "Firm" || entityType === "LLP" || entityType === "AOP/BOI") {
+      form = "ITR-5";
+      reason = "Firms, LLPs and AOP/BOIs generally use ITR-5.";
+    } else if (answers.presumptiveIncome) {
+      form = "ITR-4";
+      reason = "Presumptive income under 44AD/44ADA/44AE points to ITR-4.";
+    } else if (answers.businessIncome || answers.partnerInFirm) {
+      form = "ITR-3";
+      reason = answers.partnerInFirm ? "Partner in a firm requires ITR-3." : "Business/profession income requires ITR-3.";
+    } else if (answers.capitalGains || answers.foreignIncomeAssets || answers.broughtForwardLosses || answers.agriOver5000 || answers.exemptLtcgOnly || answers.incomeOver50L || answers.otherSourcesOnly) {
+      form = "ITR-2";
+      reason = "Capital gains / foreign assets / higher income profile indicate ITR-2.";
+    }
+
+    if (answers.salaryOnly) schedules.add("Salary");
+    if (answers.capitalGains || answers.exemptLtcgOnly) schedules.add("Capital Gains");
+    if (answers.foreignIncomeAssets) schedules.add("Foreign Assets/Income");
+    if (answers.businessIncome) schedules.add("Business & Profession");
+    if (answers.partnerInFirm) schedules.add("Partnership Income");
+    if (answers.presumptiveIncome) schedules.add("Presumptive Income");
+    if (answers.agriOver5000) schedules.add("Agricultural Income");
+    if (answers.broughtForwardLosses) schedules.add("Brought Forward Losses");
+    if (answers.otherSourcesOnly) schedules.add("Other Sources");
+    if (answers.incomeOver50L) docs.add("Capital gain statements / investment proofs");
+    if (answers.businessIncome || answers.partnerInFirm || answers.presumptiveIncome) docs.add("P&L / Balance Sheet / Books of accounts");
+    if (answers.foreignIncomeAssets) docs.add("Foreign tax / asset statements");
+    if (answers.broughtForwardLosses) docs.add("Earlier year return acknowledgements");
+
+    const auditCase = entityType === "Company" || entityType === "Firm" || entityType === "LLP" || answers.businessIncome || answers.turnoverOver2Cr || answers.partnerInFirm;
+    const dueDate = auditCase ? "October 31" : "July 31";
+    return { form, reason, schedules: [...schedules], docs: [...docs], dueDate };
+  })();
+
+  const questions: Array<[keyof typeof answers, string]> = [
+    ["resident", "Are you a resident Indian?"],
+    ["salaryOnly", "Is your income only from salary?"],
+    ["businessIncome", "Do you have business/profession income?"],
+    ["turnoverOver2Cr", "Is your business turnover > ₹2Cr?"],
+    ["partnerInFirm", "Are you a partner in a firm?"],
+    ["foreignIncomeAssets", "Do you have foreign income/assets?"],
+    ["capitalGains", "Do you have capital gains?"],
+    ["incomeOver50L", "Is your total income > ₹50L?"],
+    ["companyFirmLlp", "Are you a company/firm/LLP?"],
+    ["agriOver5000", "Do you have agricultural income > ₹5000?"],
+    ["otherSourcesOnly", "Do you have income from other sources only?"],
+    ["seniorCitizen", "Are you a senior citizen (60+)?"],
+    ["broughtForwardLosses", "Do you have brought forward losses?"],
+    ["presumptiveIncome", "Do you have presumptive income (44AD/44ADA)?"],
+    ["exemptLtcgOnly", "Do you have exempt LTCG only (no other schedule)?"],
+  ];
+
+  return (
+    <CalculatorShell
+      title="ITR Form Selector & Filing Guide"
+      subtitle="Answer the profile questions to identify the likely return form and filing checklist"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <Field label="Entity Type">
+            <select value={entityType} onChange={(e) => setEntityType(e.target.value as typeof entityType)} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Individual", "Company", "Firm", "LLP", "Trust", "Political Party", "AOP/BOI"] as const).map((item) => (<option key={item} value={item}>{item}</option>))}
+            </select>
+          </Field>
+          <div className="space-y-2">
+            {questions.map(([key, text]) => (
+              <button key={key} onClick={() => toggle(key)} className={cn("w-full text-left p-3 rounded-md border transition-all text-xs", answers[key] ? "bg-gradient-orange text-white glow-orange border-transparent" : "border-white/10 text-secondary hover:text-white")}>
+                {text}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Recommended ITR Form" value={result.form} green />
+            <MiniStat label="Due Date" value={result.dueDate} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Reason: <span className="text-white">{result.reason}</span></div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Schedules to Fill</div>
+            <div className="overflow-x-auto -mx-5"><table className="w-full text-xs"><tbody>{result.schedules.map((item, index) => (<tr key={item} className={index % 2 ? "bg-white/[0.02]" : ""}><td className="px-5 py-2 text-secondary">{item}</td></tr>))}</tbody></table></div>
+          </div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Documents Required</div>
+            <div className="overflow-x-auto -mx-5"><table className="w-full text-xs"><tbody>{result.docs.map((item, index) => (<tr key={item} className={index % 2 ? "bg-white/[0.02]" : ""}><td className="px-5 py-2 text-secondary">{item}</td></tr>))}</tbody></table></div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function BalanceSheetAnalysisCalc() {
+  const [cashAndBank, setCashAndBank] = useState("1200000");
+  const [shortTermInvestments, setShortTermInvestments] = useState("500000");
+  const [receivables, setReceivables] = useState("850000");
+  const [inventory, setInventory] = useState("750000");
+  const [otherCurrentAssets, setOtherCurrentAssets] = useState("150000");
+  const [fixedAssets, setFixedAssets] = useState("3200000");
+  const [intangibles, setIntangibles] = useState("300000");
+  const [otherNonCurrentAssets, setOtherNonCurrentAssets] = useState("100000");
+  const [shortTermDebt, setShortTermDebt] = useState("600000");
+  const [payables, setPayables] = useState("400000");
+  const [otherCurrentLiab, setOtherCurrentLiab] = useState("100000");
+  const [longTermDebt, setLongTermDebt] = useState("1800000");
+  const [otherNonCurrentLiab, setOtherNonCurrentLiab] = useState("200000");
+  const [shareCapital, setShareCapital] = useState("2000000");
+  const [reserves, setReserves] = useState("1300000");
+  const [sharesOutstanding, setSharesOutstanding] = useState("100000");
+  const [result, setResult] = useState({ currentRatio: 0, quickRatio: 0, cashRatio: 0, debtEquity: 0, debtAssets: 0, equityRatio: 0, bvps: 0, tangibleNetWorth: 0, score: 0, balanced: false, totalAssets: 0, totalLiabilities: 0, totalEquity: 0, totalCurrentAssets: 0, totalNonCurrentAssets: 0, totalCurrentLiab: 0, totalNonCurrentLiab: 0 });
+
+  useEffect(() => {
+    const ca = toNum(cashAndBank) + toNum(shortTermInvestments) + toNum(receivables) + toNum(inventory) + toNum(otherCurrentAssets);
+    const nca = toNum(fixedAssets) + toNum(intangibles) + toNum(otherNonCurrentAssets);
+    const totalAssets = ca + nca;
+    const cl = toNum(shortTermDebt) + toNum(payables) + toNum(otherCurrentLiab);
+    const ncl = toNum(longTermDebt) + toNum(otherNonCurrentLiab);
+    const equity = toNum(shareCapital) + toNum(reserves);
+    const totalLiabilities = cl + ncl;
+    const totalLiabEquity = totalLiabilities + equity;
+    const balanced = Math.abs(totalAssets - totalLiabEquity) < 1;
+    const currentRatio = cl > 0 ? ca / cl : 0;
+    const quickRatio = cl > 0 ? (toNum(cashAndBank) + toNum(shortTermInvestments) + toNum(receivables)) / cl : 0;
+    const cashRatio = cl > 0 ? (toNum(cashAndBank) + toNum(shortTermInvestments)) / cl : 0;
+    const debtEquity = equity > 0 ? (toNum(shortTermDebt) + toNum(longTermDebt)) / equity : 0;
+    const debtAssets = totalAssets > 0 ? (toNum(shortTermDebt) + toNum(longTermDebt)) / totalAssets : 0;
+    const equityRatio = totalAssets > 0 ? equity / totalAssets : 0;
+    const bvps = toNum(sharesOutstanding) > 0 ? equity / toNum(sharesOutstanding) : 0;
+    const tangibleNetWorth = equity - toNum(intangibles);
+    const tangibleNetWorthRatio = totalAssets > 0 ? tangibleNetWorth / totalAssets : 0;
+    const criterion = (ok: boolean) => (ok ? 1 : 0);
+    const score = Math.round(((criterion(currentRatio >= 1.5 && currentRatio <= 3) + criterion(quickRatio >= 1) + criterion(cashRatio >= 0.5) + criterion(debtEquity <= 1) + criterion(debtAssets <= 0.5) + criterion(equityRatio >= 0.5) + criterion(bvps > 0) + criterion(tangibleNetWorth > 0)) / 8) * 100);
+    setResult({ currentRatio, quickRatio, cashRatio, debtEquity, debtAssets, equityRatio, bvps, tangibleNetWorth, score, balanced, totalAssets, totalLiabilities, totalEquity: equity, totalCurrentAssets: ca, totalNonCurrentAssets: nca, totalCurrentLiab: cl, totalNonCurrentLiab: ncl });
+  }, [cashAndBank, shortTermInvestments, receivables, inventory, otherCurrentAssets, fixedAssets, intangibles, otherNonCurrentAssets, shortTermDebt, payables, otherCurrentLiab, longTermDebt, otherNonCurrentLiab, shareCapital, reserves, sharesOutstanding]);
+
+  const ratioCard = (label: string, value: number, good: boolean, suffix = "") => (
+    <div className="card-surface p-3">
+      <div className="text-[10px] uppercase tracking-wide text-tertiary">{label}</div>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <div className="text-base font-bold">{value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}{suffix}</div>
+        <span className={cn("text-[10px] px-2 py-0.5 rounded-full border", good ? "text-success border-success/40 bg-success/10" : "text-red-300 border-red-300/40 bg-red-300/10")}>{good ? "Healthy" : "Watch"}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <CalculatorShell
+      title="Balance Sheet Strength Analyser"
+      subtitle="Balance check, ratios and financial strength score"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Cash & Bank" value={cashAndBank} onChange={setCashAndBank} />
+          <MoneyInput label="Short-term Investments" value={shortTermInvestments} onChange={setShortTermInvestments} />
+          <MoneyInput label="Receivables" value={receivables} onChange={setReceivables} />
+          <MoneyInput label="Inventory" value={inventory} onChange={setInventory} />
+          <MoneyInput label="Other Current Assets" value={otherCurrentAssets} onChange={setOtherCurrentAssets} />
+          <MoneyInput label="Fixed Assets" value={fixedAssets} onChange={setFixedAssets} />
+          <MoneyInput label="Intangibles" value={intangibles} onChange={setIntangibles} />
+          <MoneyInput label="Other Non-current Assets" value={otherNonCurrentAssets} onChange={setOtherNonCurrentAssets} />
+          <MoneyInput label="Short-term Debt" value={shortTermDebt} onChange={setShortTermDebt} />
+          <MoneyInput label="Payables" value={payables} onChange={setPayables} />
+          <MoneyInput label="Other Current Liabilities" value={otherCurrentLiab} onChange={setOtherCurrentLiab} />
+          <MoneyInput label="Long-term Debt" value={longTermDebt} onChange={setLongTermDebt} />
+          <MoneyInput label="Other Non-current Liabilities" value={otherNonCurrentLiab} onChange={setOtherNonCurrentLiab} />
+          <MoneyInput label="Share Capital" value={shareCapital} onChange={setShareCapital} />
+          <MoneyInput label="Reserves" value={reserves} onChange={setReserves} />
+          <NumberInput label="Shares Outstanding" value={sharesOutstanding} onChange={setSharesOutstanding} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Balance Sheet</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr className="bg-primary/10"><td className="px-5 py-2 font-semibold" colSpan={2}>Assets</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Total Current Assets</td><td className="px-5 py-2 text-right">₹ {result.totalCurrentAssets.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Total Non-current Assets</td><td className="px-5 py-2 text-right">₹ {result.totalNonCurrentAssets.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr className="border-t border-primary/20"><td className="px-5 py-2.5 font-bold">Total Assets</td><td className="px-5 py-2.5 text-right font-bold">₹ {result.totalAssets.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr className="bg-primary/10"><td className="px-5 py-2 font-semibold" colSpan={2}>Liabilities & Equity</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Total Current Liabilities</td><td className="px-5 py-2 text-right">₹ {result.totalCurrentLiab.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Total Non-current Liabilities</td><td className="px-5 py-2 text-right">₹ {result.totalNonCurrentLiab.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Total Equity</td><td className="px-5 py-2 text-right">₹ {result.totalEquity.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr className="border-t border-primary/20"><td className="px-5 py-2.5 font-bold">Liabilities + Equity</td><td className="px-5 py-2.5 text-right font-bold">₹ {(result.totalLiabilities + result.totalEquity).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className={cn("card-surface p-4 text-sm", result.balanced ? "border border-success/40 text-success" : "border border-red-400/40 text-red-300")}>{result.balanced ? "Balance sheet balances." : "Balance sheet does not balance — check totals."}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {ratioCard("Current Ratio", result.currentRatio, result.currentRatio >= 1.5)}
+            {ratioCard("Quick Ratio", result.quickRatio, result.quickRatio >= 1)}
+            {ratioCard("Cash Ratio", result.cashRatio, result.cashRatio >= 0.5)}
+            {ratioCard("Debt / Equity", result.debtEquity, result.debtEquity <= 1)}
+            {ratioCard("Debt / Assets", result.debtAssets, result.debtAssets <= 0.5)}
+            {ratioCard("Equity Ratio", result.equityRatio, result.equityRatio >= 0.5)}
+            {ratioCard("Book Value / Share", result.bvps, result.bvps > 0, "")}
+            {ratioCard("Tangible Net Worth", result.tangibleNetWorth, result.tangibleNetWorth > 0)}
+          </div>
+          <MiniStat label="Overall Financial Strength Score" value={`${result.score.toLocaleString('en-IN')} / 100`} green={result.score >= 70} />
+        </div>
+      )}
+    />
+  );
+}
+
+function Rebate87ACalc() {
+  const [totalIncome, setTotalIncome] = useState("700000");
+  const [regime, setRegime] = useState<"new" | "old">("new");
+  const [result, setResult] = useState({ taxBeforeRebate: 0, rebateAmount: 0, taxAfterRebate: 0, cessAmount: 0, totalTax: 0, marginalReliefNote: "" });
+
+  useEffect(() => {
+    const income = toNum(totalIncome);
+    const slabs = regime === "new" ? NEW_REGIME_SLABS : OLD_REGIME_SLABS;
+    const taxBeforeRebate = calculateSlabTax(income, slabs).baseTax;
+    let rebateAmount = 0;
+    let taxAfterRebate = taxBeforeRebate;
+    let marginalReliefNote = "";
+
+    if (regime === "new") {
+      if (income <= 700000) {
+        rebateAmount = Math.min(25000, taxBeforeRebate);
+        taxAfterRebate = Math.max(0, taxBeforeRebate - rebateAmount);
+      } else if (income <= 727000 && taxBeforeRebate > income - 700000) {
+        taxAfterRebate = Math.max(0, income - 700000);
+        marginalReliefNote = "Marginal relief applied under new regime.";
+      }
+    } else if (income <= 500000) {
+      rebateAmount = Math.min(12500, taxBeforeRebate);
+      taxAfterRebate = Math.max(0, taxBeforeRebate - rebateAmount);
+    }
+
+    const cessAmount = taxAfterRebate * 0.04;
+    const totalTax = taxAfterRebate + cessAmount;
+    setResult({ taxBeforeRebate, rebateAmount, taxAfterRebate, cessAmount, totalTax, marginalReliefNote });
+  }, [totalIncome, regime]);
+
+  return (
+    <CalculatorShell
+      title="Section 87A Rebate Calculator"
+      subtitle="Rebate and marginal relief computation by regime"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Total Income" value={totalIncome} onChange={setTotalIncome} />
+          <Field label="Regime">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["new", "old"] as const).map((item) => (<button key={item} onClick={() => setRegime(item)} className={cn("py-2 text-xs font-medium rounded-md transition-all uppercase", regime === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{item}</button>))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Step-by-step</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs"><tbody>
+                <tr><td className="px-5 py-2 text-secondary">Income</td><td className="px-5 py-2 text-right">₹ {toNum(totalIncome).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                <tr><td className="px-5 py-2 text-secondary">Tax Before Rebate</td><td className="px-5 py-2 text-right">₹ {result.taxBeforeRebate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                <tr><td className="px-5 py-2 text-secondary">Rebate Amount</td><td className="px-5 py-2 text-right">₹ {result.rebateAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                <tr><td className="px-5 py-2 text-secondary">Tax After Rebate</td><td className="px-5 py-2 text-right">₹ {result.taxAfterRebate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                <tr><td className="px-5 py-2 text-secondary">Cess @4%</td><td className="px-5 py-2 text-right">₹ {result.cessAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                <tr className="border-t border-primary/20"><td className="px-5 py-2.5 font-bold">Total Tax</td><td className="px-5 py-2.5 text-right font-bold">₹ {result.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+          {result.totalTax === 0 ? <div className="card-surface p-4 border border-success/40 text-success text-sm font-semibold">NIL TAX</div> : <MiniStat label="Total Tax" value={`₹ ${result.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />}
+          {result.marginalReliefNote && <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.marginalReliefNote}</div>}
+        </div>
+      )}
+    />
+  );
+}
+
+function SalaryRestructureCalc() {
+  const [currentCTC, setCurrentCTC] = useState("1800000");
+  const [currentBasicPercent, setCurrentBasicPercent] = useState("45");
+  const [payingRent, setPayingRent] = useState(true);
+  const [monthlyRent, setMonthlyRent] = useState("30000");
+  const [cityType, setCityType] = useState<"metro" | "non-metro">("metro");
+  const [hasCarLease, setHasCarLease] = useState(false);
+  const [carLeaseAmount, setCarLeaseAmount] = useState("0");
+  const [hasMealVoucher, setHasMealVoucher] = useState(false);
+  const [mealVoucherAmount, setMealVoucherAmount] = useState("2200");
+  const [hasLTA, setHasLTA] = useState(false);
+  const [ltaAmount, setLtaAmount] = useState("50000");
+  const [result, setResult] = useState({ currentTax: 0, optimizedTax: 0, monthlySaving: 0, annualSaving: 0, currentTaxable: 0, optimizedTaxable: 0, rows: [] as Array<{ label: string; currentValue: number; optimizedValue: number; annualSaving: number }> });
+
+  useEffect(() => {
+    const ctc = toNum(currentCTC);
+    const basicPct = toNum(currentBasicPercent) / 100;
+    const basicAnnual = ctc * basicPct;
+    const currentTaxable = Math.max(0, ctc - 50000);
+    const currentTax = calculateSlabTax(currentTaxable, NEW_REGIME_SLABS).baseTax * 1.04;
+
+    const optimizedBasic = ctc * 0.4;
+    const hraPct = cityType === "metro" ? 0.5 : 0.4;
+    const hraReceived = payingRent ? optimizedBasic * hraPct : 0;
+    const hraExempt = payingRent ? Math.min(hraReceived, toNum(monthlyRent) * 12 - optimizedBasic * 0.1, optimizedBasic * hraPct) : 0;
+    const carBenefit = hasCarLease ? Math.min(toNum(carLeaseAmount), 1800 * 12) : 0;
+    const mealBenefit = hasMealVoucher ? Math.min(toNum(mealVoucherAmount) * 12, 2200 * 12) : 0;
+    const ltaBenefit = hasLTA ? toNum(ltaAmount) : 0;
+    const npsBenefit = optimizedBasic * 0.1;
+    const optimizedTaxable = Math.max(0, ctc - 50000 - hraExempt - carBenefit - mealBenefit - ltaBenefit - npsBenefit);
+    const optimizedTax = calculateSlabTax(optimizedTaxable, NEW_REGIME_SLABS).baseTax * 1.04;
+    const annualSaving = currentTax - optimizedTax;
+    const monthlySaving = annualSaving / 12;
+    const rows = [
+      { label: "Basic", currentValue: basicAnnual, optimizedValue: optimizedBasic, annualSaving: basicAnnual - optimizedBasic },
+      { label: "HRA", currentValue: 0, optimizedValue: hraReceived, annualSaving: hraExempt },
+      { label: "Car Lease", currentValue: 0, optimizedValue: carBenefit, annualSaving: carBenefit },
+      { label: "Meal Vouchers", currentValue: 0, optimizedValue: mealBenefit, annualSaving: mealBenefit },
+      { label: "LTA", currentValue: 0, optimizedValue: ltaBenefit, annualSaving: ltaBenefit },
+      { label: "Employer NPS", currentValue: 0, optimizedValue: npsBenefit, annualSaving: npsBenefit },
+    ];
+    setResult({ currentTax, optimizedTax, monthlySaving, annualSaving, currentTaxable, optimizedTaxable, rows });
+  }, [currentCTC, currentBasicPercent, payingRent, monthlyRent, cityType, hasCarLease, carLeaseAmount, hasMealVoucher, mealVoucherAmount, hasLTA, ltaAmount]);
+
+  return (
+    <CalculatorShell
+      title="Salary Restructuring Optimizer"
+      subtitle="Restructure salary and compare current vs optimized tax"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Current CTC" value={currentCTC} onChange={setCurrentCTC} />
+          <NumberInput label="Current Basic (% of CTC)" value={currentBasicPercent} onChange={setCurrentBasicPercent} />
+          <Field label="Paying Rent">
+            <button onClick={() => setPayingRent((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", payingRent ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{payingRent ? "Yes" : "No"}</button>
+          </Field>
+          {payingRent && <MoneyInput label="Monthly Rent" value={monthlyRent} onChange={setMonthlyRent} />}
+          <Field label="City Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["metro", "non-metro"] as const).map((item) => (<button key={item} onClick={() => setCityType(item)} className={cn("py-2 text-xs font-medium rounded-md transition-all capitalize", cityType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{item}</button>))}
+            </div>
+          </Field>
+          <Field label="Car Lease Benefit">
+            <button onClick={() => setHasCarLease((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", hasCarLease ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{hasCarLease ? "Yes" : "No"}</button>
+          </Field>
+          {hasCarLease && <MoneyInput label="Car Lease Amount" value={carLeaseAmount} onChange={setCarLeaseAmount} />}
+          <Field label="Meal Voucher Benefit">
+            <button onClick={() => setHasMealVoucher((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", hasMealVoucher ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{hasMealVoucher ? "Yes" : "No"}</button>
+          </Field>
+          {hasMealVoucher && <MoneyInput label="Meal Voucher Amount / Month" value={mealVoucherAmount} onChange={setMealVoucherAmount} />}
+          <Field label="LTA Benefit">
+            <button onClick={() => setHasLTA((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", hasLTA ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{hasLTA ? "Yes" : "No"}</button>
+          </Field>
+          {hasLTA && <MoneyInput label="LTA Amount" value={ltaAmount} onChange={setLtaAmount} />}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Current Tax" value={`₹ ${result.currentTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Optimized Tax" value={`₹ ${result.optimizedTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Annual Tax Saving" value={`₹ ${result.annualSaving.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Monthly Saving" value={`₹ ${result.monthlySaving.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+          </div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Restructured Salary Components</div>
+            <div className="overflow-x-auto -mx-5"><table className="w-full text-xs"><thead><tr className="text-tertiary"><th className="text-left font-medium px-5 py-2 bg-primary/10">Component</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Current</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Optimized</th><th className="text-right font-medium px-5 py-2 bg-primary/10">Saving</th></tr></thead><tbody>{result.rows.map((row, index) => (<tr key={row.label} className={index % 2 ? "bg-white/[0.02]" : ""}><td className="px-5 py-2 text-secondary">{row.label}</td><td className="px-3 py-2 text-right">₹ {row.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-3 py-2 text-right">₹ {row.optimizedValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-5 py-2 text-right">₹ {row.annualSaving.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>))}</tbody></table></div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function InterestIncomeCalc() {
+  const [savingsAccountInterest, setSavingsAccountInterest] = useState("12000");
+  const [fdInterest, setFdInterest] = useState("65000");
+  const [rdInterest, setRdInterest] = useState("12000");
+  const [nscInterest, setNscInterest] = useState("8000");
+  const [ppfInterest, setPpfInterest] = useState("30000");
+  const [epfInterest, setEpfInterest] = useState("0");
+  const [bondInterest, setBondInterest] = useState("5000");
+  const [isSeniorCitizen, setIsSeniorCitizen] = useState(false);
+  const [result, setResult] = useState({ totalExempt: 0, totalTaxable: 0, estimatedTaxAt30: 0, tdsDeducted: 0, netInterestIncome: 0, deductionAmount: 0, rows: [] as Array<{ label: string; amount: number; exempt: number; taxable: number }> });
+
+  useEffect(() => {
+    const sav = toNum(savingsAccountInterest);
+    const fd = toNum(fdInterest);
+    const rd = toNum(rdInterest);
+    const nsc = toNum(nscInterest);
+    const ppf = toNum(ppfInterest);
+    const epf = toNum(epfInterest);
+    const bond = toNum(bondInterest);
+    const deductionAmount = Math.min(sav, isSeniorCitizen ? 50000 : 10000);
+    const totalExempt = deductionAmount + ppf;
+    const totalTaxable = Math.max(0, sav - deductionAmount) + fd + rd + nsc + epf + bond;
+    const estimatedTaxAt30 = totalTaxable * 0.3;
+    const threshold = isSeniorCitizen ? 50000 : 40000;
+    const tdsDeducted = fd > threshold ? fd * 0.1 : 0;
+    const gross = sav + fd + rd + nsc + ppf + epf + bond;
+    const netInterestIncome = gross - estimatedTaxAt30;
+    const rows = [
+      { label: "Savings account", amount: sav, exempt: deductionAmount, taxable: Math.max(0, sav - deductionAmount) },
+      { label: "FD", amount: fd, exempt: 0, taxable: fd },
+      { label: "RD", amount: rd, exempt: 0, taxable: rd },
+      { label: "NSC", amount: nsc, exempt: 0, taxable: nsc },
+      { label: "PPF", amount: ppf, exempt: ppf, taxable: 0 },
+      { label: "EPF (taxable excess)", amount: epf, exempt: 0, taxable: epf },
+      { label: "Bond interest", amount: bond, exempt: 0, taxable: bond },
+    ];
+    setResult({ totalExempt, totalTaxable, estimatedTaxAt30, tdsDeducted, netInterestIncome, deductionAmount, rows });
+  }, [savingsAccountInterest, fdInterest, rdInterest, nscInterest, ppfInterest, epfInterest, bondInterest, isSeniorCitizen]);
+
+  return (
+    <CalculatorShell
+      title="Interest Income Tax Calculator"
+      subtitle="Interest source breakdown with exemptions and TDS estimation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Savings Account Interest" value={savingsAccountInterest} onChange={setSavingsAccountInterest} />
+          <MoneyInput label="FD Interest" value={fdInterest} onChange={setFdInterest} />
+          <MoneyInput label="RD Interest" value={rdInterest} onChange={setRdInterest} />
+          <MoneyInput label="NSC Interest" value={nscInterest} onChange={setNscInterest} />
+          <MoneyInput label="PPF Interest" value={ppfInterest} onChange={setPpfInterest} />
+          <MoneyInput label="EPF Taxable Interest (Excess over cap)" value={epfInterest} onChange={setEpfInterest} />
+          <MoneyInput label="Bond Interest" value={bondInterest} onChange={setBondInterest} />
+          <Field label="Senior Citizen">
+            <button onClick={() => setIsSeniorCitizen((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", isSeniorCitizen ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{isSeniorCitizen ? "Yes" : "No"}</button>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="80TTA / 80TTB Deduction" value={`₹ ${result.deductionAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Exempt" value={`₹ ${result.totalExempt.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Total Taxable" value={`₹ ${result.totalTaxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Estimated Tax @30%" value={`₹ ${result.estimatedTaxAt30.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="TDS Deducted" value={`₹ ${result.tdsDeducted.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Net Interest Income" value={`₹ ${result.netInterestIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+          </div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Source Breakdown</div>
+            <div className="overflow-x-auto -mx-5"><table className="w-full text-xs"><thead><tr className="text-tertiary"><th className="text-left font-medium px-5 py-2 bg-primary/10">Source</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Amount</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Exempt</th><th className="text-right font-medium px-5 py-2 bg-primary/10">Taxable</th></tr></thead><tbody>{result.rows.map((row, index) => (<tr key={row.label} className={index % 2 ? "bg-white/[0.02]" : ""}><td className="px-5 py-2 text-secondary">{row.label}</td><td className="px-3 py-2 text-right">₹ {row.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-3 py-2 text-right">₹ {row.exempt.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-5 py-2 text-right">₹ {row.taxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>))}</tbody></table></div>
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">NSC interest is taxable; accrued interest may qualify as 80C investment in the year of accrual.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function LTCGMutualFundCalc() {
+  type MfRow = { fundName: string; investedAmount: string; redemptionAmount: string; investmentDate: string; redemptionDate: string; fundType: "Equity" | "Debt" | "Hybrid"; hybridOrientation: "Equity-oriented" | "Debt-oriented" };
+  const makeRow = (): MfRow => ({ fundName: "", investedAmount: "100000", redemptionAmount: "120000", investmentDate: "2024-01-01", redemptionDate: "2026-01-01", fundType: "Equity", hybridOrientation: "Equity-oriented" });
+  const [redemptions, setRedemptions] = useState<MfRow[]>([makeRow(), makeRow()]);
+  const [result, setResult] = useState({ rows: [] as Array<{ fundName: string; holdingYears: number; gain: number; rateLabel: string; tax: number }>, totalLTCG: 0, totalSTCG: 0, totalDebtGains: 0, ltcgAfterExemption: 0, totalTax: 0 });
+
+  useEffect(() => {
+    const rowsData = redemptions.map((row) => {
+      const invested = toNum(row.investedAmount);
+      const redeemed = toNum(row.redemptionAmount);
+      const gain = redeemed - invested;
+      const holdingYears = Math.max(0, (new Date(row.redemptionDate).getTime() - new Date(row.investmentDate).getTime()) / (1000 * 60 * 60 * 24 * 365));
+      const equityLike = row.fundType === "Equity" || (row.fundType === "Hybrid" && row.hybridOrientation === "Equity-oriented");
+      const debtLike = row.fundType === "Debt" || (row.fundType === "Hybrid" && row.hybridOrientation === "Debt-oriented");
+      return { ...row, invested, redeemed, gain, holdingYears, equityLike, debtLike };
+    });
+
+    const totalLTCG = rowsData.filter((r) => r.equityLike && r.holdingYears > 1 && r.gain > 0).reduce((sum, row) => sum + row.gain, 0);
+    const totalSTCG = rowsData.filter((r) => r.equityLike && r.holdingYears <= 1 && r.gain > 0).reduce((sum, row) => sum + row.gain, 0);
+    const totalDebtGains = rowsData.filter((r) => r.debtLike && r.gain > 0).reduce((sum, row) => sum + row.gain, 0);
+    const ltcgAfterExemption = Math.max(0, totalLTCG - 125000);
+    const equityLtcgTax = totalLTCG > 0 ? ltcgAfterExemption * 0.125 : 0;
+    const debtTax = totalDebtGains > 0 ? calculateSlabTax(totalDebtGains, NEW_REGIME_SLABS).baseTax * 1.04 : 0;
+
+    const eligibleRows = rowsData.filter((r) => r.equityLike && r.holdingYears > 1 && r.gain > 0);
+    const eligibleTotal = eligibleRows.reduce((sum, row) => sum + row.gain, 0) || 1;
+    const rows = rowsData.map((row) => {
+      let tax = 0;
+      let rateLabel = "";
+      if (row.equityLike) {
+        if (row.holdingYears > 1 && row.gain > 0) {
+          const share = row.gain / eligibleTotal;
+          const taxableGain = Math.max(0, row.gain - 125000 * share);
+          tax = taxableGain * 0.125;
+          rateLabel = "LTCG 12.5%";
+        } else {
+          tax = Math.max(0, row.gain) * 0.2;
+          rateLabel = "STCG 20%";
+        }
+      } else if (row.debtLike) {
+        tax = row.gain > 0 ? (calculateSlabTax(row.gain, NEW_REGIME_SLABS).baseTax * 1.04) : 0;
+        rateLabel = "Slab rate";
+      }
+      return { fundName: row.fundName, holdingYears: row.holdingYears, gain: row.gain, rateLabel, tax };
+    });
+
+    setResult({ rows, totalLTCG, totalSTCG, totalDebtGains, ltcgAfterExemption, totalTax: equityLtcgTax + totalSTCG * 0.2 + debtTax });
+  }, [redemptions]);
+
+  const updateRow = (index: number, key: keyof MfRow, value: string) => setRedemptions((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  const addRow = () => setRedemptions((prev) => (prev.length >= 5 ? prev : [...prev, makeRow()]));
+
+  return (
+    <CalculatorShell
+      title="Mutual Fund Capital Gains Calculator"
+      subtitle="Aggregate LTCG / STCG / debt taxation under post-budget 2024 rules"
+      inputPanel={(
+        <div className="card-surface p-5 space-y-3">
+          <div className="flex items-center justify-between"><h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Redemptions (Max 5)</h2><button onClick={addRow} className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white">Add Redemption</button></div>
+          {redemptions.map((row, index) => (
+            <div key={`mf-${index}`} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_110px_120px_120px_110px] gap-2">
+              <input value={row.fundName} onChange={(e) => updateRow(index, "fundName", e.target.value)} className="glass-input h-10 px-3 text-sm" placeholder="Fund Name" />
+              <input value={row.investedAmount} inputMode="decimal" onChange={(e) => updateRow(index, "investedAmount", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Invested" />
+              <input value={row.redemptionAmount} inputMode="decimal" onChange={(e) => updateRow(index, "redemptionAmount", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Redeemed" />
+              <input type="date" value={row.investmentDate} onChange={(e) => updateRow(index, "investmentDate", e.target.value)} className="glass-input h-10 px-3 text-sm" />
+              <input type="date" value={row.redemptionDate} onChange={(e) => updateRow(index, "redemptionDate", e.target.value)} className="glass-input h-10 px-3 text-sm" />
+              <div className="space-y-2">
+                <select value={row.fundType} onChange={(e) => updateRow(index, "fundType", e.target.value)} className="glass-input h-10 px-2 text-sm w-full">
+                  {(["Equity", "Debt", "Hybrid"] as const).map((item) => (<option key={item} value={item}>{item}</option>))}
+                </select>
+                {row.fundType === "Hybrid" && <select value={row.hybridOrientation} onChange={(e) => updateRow(index, "hybridOrientation", e.target.value)} className="glass-input h-10 px-2 text-sm w-full"><option value="Equity-oriented">Equity-oriented</option><option value="Debt-oriented">Debt-oriented</option></select>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Per Redemption</div>
+            <div className="overflow-x-auto -mx-5"><table className="w-full text-xs"><thead><tr className="text-tertiary"><th className="text-left font-medium px-5 py-2 bg-primary/10">Fund</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Holding Years</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Gain/Loss</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th><th className="text-right font-medium px-5 py-2 bg-primary/10">Tax</th></tr></thead><tbody>{result.rows.map((row, index) => (<tr key={`${row.fundName}-${index}`} className={index % 2 ? "bg-white/[0.02]" : ""}><td className="px-5 py-2 text-secondary">{row.fundName || `Fund ${index + 1}`}</td><td className="px-3 py-2 text-right">{row.holdingYears.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className={cn("px-3 py-2 text-right", row.gain >= 0 ? "text-success" : "text-red-300")}>₹ {row.gain.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="px-3 py-2 text-right">{row.rateLabel}</td><td className="px-5 py-2 text-right">₹ {row.tax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>))}</tbody></table></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total LTCG (Equity)" value={`₹ ${result.totalLTCG.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total STCG" value={`₹ ${result.totalSTCG.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Debt Gains" value={`₹ ${result.totalDebtGains.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="LTCG after ₹1.25L Exemption" value={`₹ ${result.ltcgAfterExemption.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Tax" value={`₹ ${result.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ProfessionalTaxCalc() {
+  const [monthlyGrossSalary, setMonthlyGrossSalary] = useState("25000");
+  const [state, setState] = useState<"Maharashtra" | "Karnataka" | "West Bengal" | "Tamil Nadu" | "Andhra Pradesh" | "Telangana" | "Gujarat" | "Delhi">("Maharashtra");
+  const [result, setResult] = useState({ monthlyPT: 0, annualPT: 0, specialMonthAmount: 0, section16Deduction: 0, taxSavingAt30: 0, note: "" });
+
+  useEffect(() => {
+    const salary = toNum(monthlyGrossSalary);
+    let monthlyPT = 0;
+    let specialMonthAmount = 0;
+    let note = "";
+
+    if (state === "Delhi") {
+      monthlyPT = 0;
+      note = "Delhi has no professional tax.";
+    } else if (state === "Maharashtra") {
+      if (salary < 7500) monthlyPT = 0;
+      else if (salary <= 10000) monthlyPT = 175;
+      else monthlyPT = 200;
+      specialMonthAmount = monthlyPT > 0 ? 300 : 0;
+      note = "February PT in Maharashtra is ₹300.";
+    } else if (state === "Karnataka") {
+      monthlyPT = salary < 15000 ? 0 : 200;
+      note = "Karnataka monthly slab applied.";
+    } else if (state === "West Bengal") {
+      if (salary < 10000) monthlyPT = 0;
+      else if (salary < 15000) monthlyPT = 110;
+      else if (salary < 25000) monthlyPT = 130;
+      else if (salary < 40000) monthlyPT = 150;
+      else monthlyPT = 200;
+      note = "West Bengal professional tax slab applied.";
+    } else if (state === "Tamil Nadu") {
+      monthlyPT = salary < 21000 ? 0 : salary <= 30000 ? 135 : 315;
+      note = "Tamil Nadu monthly PT slab applied.";
+    } else if (state === "Andhra Pradesh" || state === "Telangana") {
+      monthlyPT = salary < 15000 ? 0 : salary <= 20000 ? 150 : 200;
+      note = `${state} monthly PT slab applied.`;
+    } else if (state === "Gujarat") {
+      monthlyPT = salary < 12000 ? 0 : salary <= 15000 ? 80 : 150;
+      note = "Gujarat monthly PT slab applied.";
+    }
+
+    const annualPT = state === "Maharashtra" ? monthlyPT * 11 + specialMonthAmount : monthlyPT * 12;
+    const section16Deduction = annualPT;
+    const taxSavingAt30 = annualPT * 0.3;
+    setResult({ monthlyPT, annualPT, specialMonthAmount, section16Deduction, taxSavingAt30, note });
+  }, [monthlyGrossSalary, state]);
+
+  return (
+    <CalculatorShell
+      title="Professional Tax Calculator (State-wise)"
+      subtitle="Monthly and annual professional tax with deduction benefit"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Monthly Gross Salary" value={monthlyGrossSalary} onChange={setMonthlyGrossSalary} />
+          <Field label="State">
+            <select value={state} onChange={(e) => setState(e.target.value as typeof state)} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Maharashtra", "Karnataka", "West Bengal", "Tamil Nadu", "Andhra Pradesh", "Telangana", "Gujarat", "Delhi"] as const).map((item) => (<option key={item} value={item}>{item}</option>))}
+            </select>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Monthly PT" value={`₹ ${result.monthlyPT.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Annual PT" value={`₹ ${result.annualPT.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="February PT / Special Month" value={`₹ ${result.specialMonthAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Tax Saving @30%" value={`₹ ${result.taxSavingAt30.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Section 16(iii) deduction: <span className="text-white">₹ {result.section16Deduction.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.note}</div>
         </div>
       )}
     />
