@@ -79,6 +79,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "invoice-gst": InvoiceGSTCalc,
   "partnership-profit": PartnershipProfitCalc,
   "depreciation-comparison": DepreciationComparisonCalc,
+  "equity-valuation": EquityValuationCalc,
+  "emi-moratorium": EMIMoratoriumCalc,
+  "income-tax-notice": IncomeTaxNoticeCalc,
+  "startup-valuation": StartupValuationCalc,
+  "tax-planning": TaxPlanningCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -152,6 +157,11 @@ const titleMap: Record<string, string> = {
   "invoice-gst": "GST Invoice Calculator",
   "partnership-profit": "Partnership Profit Sharing Calculator",
   "depreciation-comparison": "Depreciation Methods Comparison",
+  "equity-valuation": "Equity Valuation — DDM & P/E",
+  "emi-moratorium": "EMI Moratorium Impact Calculator",
+  "income-tax-notice": "Income Tax Notice Interest Calculator",
+  "startup-valuation": "Startup Valuation Calculator",
+  "tax-planning": "Tax Planning & Saving Optimizer",
 };
 
 const categoryMap: Record<string, string> = {
@@ -225,6 +235,11 @@ const categoryMap: Record<string, string> = {
   "invoice-gst": "gst",
   "partnership-profit": "ratios",
   "depreciation-comparison": "depreciation",
+  "equity-valuation": "valuation",
+  "emi-moratorium": "loans",
+  "income-tax-notice": "tax",
+  "startup-valuation": "valuation",
+  "tax-planning": "tax",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -8840,6 +8855,481 @@ function DepreciationComparisonCalc() {
 
           <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
             Highest early-year depreciation method: <span className="text-white font-medium">{result.earlyHighMethod}</span>. Equal annual distribution method: <span className="text-white font-medium">SLM</span>.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function EquityValuationCalc() {
+  const [currentEPS, setCurrentEPS] = useState("45");
+  const [epsGrowthRate, setEpsGrowthRate] = useState("12");
+  const [dividendPerShare, setDividendPerShare] = useState("12");
+  const [dividendGrowthRate, setDividendGrowthRate] = useState("6");
+  const [requiredReturn, setRequiredReturn] = useState("14");
+  const [industryPE, setIndustryPE] = useState("18");
+  const [currentMarketPrice, setCurrentMarketPrice] = useState("850");
+  const [result, setResult] = useState({
+    intrinsicValueDDM: 0,
+    intrinsicValuePE: 0,
+    fairValueEPS: 0,
+    averageValue: 0,
+    marginOfSafety: 0,
+    upsideDownside: 0,
+    recommendation: "",
+  });
+
+  useEffect(() => {
+    const eps = toNum(currentEPS);
+    const epsG = toNum(epsGrowthRate) / 100;
+    const dps = toNum(dividendPerShare);
+    const divG = toNum(dividendGrowthRate) / 100;
+    const req = toNum(requiredReturn) / 100;
+    const pe = toNum(industryPE);
+    const market = toNum(currentMarketPrice);
+
+    const intrinsicValueDDM = req > divG ? dps * (1 + divG) / (req - divG) : 0;
+    const intrinsicValuePE = eps * pe;
+    const projectedEPS5Y = eps * (1 + epsG) ** 5;
+    const fairValueEPS = req > 0 ? (projectedEPS5Y * pe) / (1 + req) ** 5 : projectedEPS5Y * pe;
+
+    const averageValue = (intrinsicValueDDM + intrinsicValuePE + fairValueEPS) / 3;
+    const marginOfSafety = averageValue * 0.8;
+    const upsideDownside = market > 0 ? ((averageValue - market) / market) * 100 : 0;
+    const recommendation = market <= 0
+      ? "Provide market price for valuation call"
+      : averageValue > market * 1.1
+        ? "Undervalued"
+        : averageValue < market * 0.9
+          ? "Overvalued"
+          : "Fairly Valued";
+
+    setResult({
+      intrinsicValueDDM,
+      intrinsicValuePE,
+      fairValueEPS,
+      averageValue,
+      marginOfSafety,
+      upsideDownside,
+      recommendation,
+    });
+  }, [currentEPS, epsGrowthRate, dividendPerShare, dividendGrowthRate, requiredReturn, industryPE, currentMarketPrice]);
+
+  return (
+    <CalculatorShell
+      title="Equity Valuation — DDM & P/E"
+      subtitle="Multi-method intrinsic value and recommendation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Current EPS" value={currentEPS} onChange={setCurrentEPS} />
+          <NumberInput label="EPS Growth Rate (%)" value={epsGrowthRate} onChange={setEpsGrowthRate} />
+          <MoneyInput label="Dividend Per Share" value={dividendPerShare} onChange={setDividendPerShare} />
+          <NumberInput label="Dividend Growth Rate (%)" value={dividendGrowthRate} onChange={setDividendGrowthRate} />
+          <NumberInput label="Required Return (%)" value={requiredReturn} onChange={setRequiredReturn} />
+          <NumberInput label="Industry P/E" value={industryPE} onChange={setIndustryPE} />
+          <MoneyInput label="Current Market Price (Optional)" value={currentMarketPrice} onChange={setCurrentMarketPrice} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <MiniStat label="DDM Value" value={formatINR(result.intrinsicValueDDM)} />
+            <MiniStat label="P/E Value" value={formatINR(result.intrinsicValuePE)} />
+            <MiniStat label="EPS Growth Fair Value" value={formatINR(result.fairValueEPS)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Average Value" value={formatINR(result.averageValue)} green />
+            <MiniStat label="Margin of Safety (20%)" value={formatINR(result.marginOfSafety)} />
+            <MiniStat label="Upside / Downside" value={formatPct(result.upsideDownside)} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Recommendation: <span className="text-white font-medium">{result.recommendation}</span></div>
+        </div>
+      )}
+    />
+  );
+}
+
+function EMIMoratoriumCalc() {
+  const [loanAmount, setLoanAmount] = useState("3000000");
+  const [interestRate, setInterestRate] = useState("9");
+  const [originalTenure, setOriginalTenure] = useState("240");
+  const [moratoriumMonths, setMoratoriumMonths] = useState("6");
+  const [moratoriumType, setMoratoriumType] = useState<"interest-only" | "full deferment">("interest-only");
+  const [result, setResult] = useState({
+    originalEMI: 0,
+    newLoanAmount: 0,
+    newEMI: 0,
+    extraInterestDue: 0,
+    totalExtraCost: 0,
+    rows: [] as Array<{ month: number; opening: number; interest: number; closing: number }>,
+  });
+
+  useEffect(() => {
+    const principal = toNum(loanAmount);
+    const rate = toNum(interestRate);
+    const tenure = Math.max(1, Math.floor(toNum(originalTenure)));
+    const mMonths = Math.min(6, Math.max(1, Math.floor(toNum(moratoriumMonths))));
+    const r = rate / 12 / 100;
+
+    const originalEMI = calculateEMIFromPrincipal(principal, rate, tenure);
+    let newLoanAmount = principal;
+    const rows: Array<{ month: number; opening: number; interest: number; closing: number }> = [];
+    let opening = principal;
+
+    for (let m = 1; m <= mMonths; m += 1) {
+      const interest = moratoriumType === "interest-only"
+        ? principal * r
+        : opening * r;
+      const closing = moratoriumType === "interest-only" ? opening : opening + interest;
+      rows.push({ month: m, opening, interest, closing });
+      opening = closing;
+    }
+
+    const interestAccrued = moratoriumType === "interest-only"
+      ? principal * r * mMonths
+      : principal * (1 + r) ** mMonths - principal;
+
+    newLoanAmount = principal + interestAccrued;
+    const newEMI = calculateEMIFromPrincipal(newLoanAmount, rate, tenure);
+    const extraInterestDue = Math.max(0, (newEMI * tenure) - (originalEMI * tenure));
+    const totalExtraCost = extraInterestDue;
+
+    setResult({ originalEMI, newLoanAmount, newEMI, extraInterestDue, totalExtraCost, rows });
+  }, [loanAmount, interestRate, originalTenure, moratoriumMonths, moratoriumType]);
+
+  return (
+    <CalculatorShell
+      title="EMI Moratorium Impact Calculator"
+      subtitle="Compare EMI impact of interest-only vs full deferment"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Loan Amount" value={loanAmount} onChange={setLoanAmount} />
+          <NumberInput label="Interest Rate (%)" value={interestRate} onChange={setInterestRate} />
+          <NumberInput label="Original Tenure (Months)" value={originalTenure} onChange={setOriginalTenure} />
+          <NumberInput label="Moratorium Months (1-6)" value={moratoriumMonths} onChange={setMoratoriumMonths} />
+          <Field label="Moratorium Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["interest-only", "full deferment"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setMoratoriumType(item)}
+                  className={cn("py-2 text-xs font-medium rounded-md transition-all capitalize", moratoriumType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Original EMI" value={formatINR(result.originalEMI)} />
+            <MiniStat label="New Loan Amount" value={formatINR(result.newLoanAmount)} />
+            <MiniStat label="New EMI" value={formatINR(result.newEMI)} />
+            <MiniStat label="Extra Interest Due" value={formatINR(result.extraInterestDue)} />
+            <MiniStat label="Total Extra Cost" value={formatINR(result.totalExtraCost)} green />
+          </div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Moratorium Month-wise</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead><tr className="text-tertiary"><th className="text-left font-medium px-5 py-2 bg-primary/10">Month</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Opening</th><th className="text-right font-medium px-3 py-2 bg-primary/10">Interest</th><th className="text-right font-medium px-5 py-2 bg-primary/10">Closing</th></tr></thead>
+                <tbody>
+                  {result.rows.map((row, i) => (
+                    <tr key={row.month} className={i % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.month.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.opening)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.interest)}</td>
+                      <td className="px-5 py-2 text-right">{formatINR(row.closing)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Recommendation: Interest-only preferred over full deferment.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function IncomeTaxNoticeCalc() {
+  const [taxDemand, setTaxDemand] = useState("250000");
+  const [noticeDate, setNoticeDate] = useState("2026-01-10");
+  const [paymentDate, setPaymentDate] = useState("2026-04-25");
+  const [noticeType, setNoticeType] = useState<"143(1)" | "143(3)" | "148" | "271">("143(1)");
+  const [result, setResult] = useState({
+    months: 0,
+    interest234A: 0,
+    interest234B: 0,
+    interest234C: 0,
+    totalInterest: 0,
+    totalDue: 0,
+    overdueDays: 0,
+    penaltyMin: 0,
+    penaltyMax: 0,
+  });
+
+  useEffect(() => {
+    const demand = toNum(taxDemand);
+    const start = new Date(noticeDate);
+    const end = new Date(paymentDate);
+    const days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+    const months = Math.max(0, Math.ceil(days / 30));
+
+    const hasA = noticeType === "143(1)" || noticeType === "148";
+    const hasB = noticeType === "143(1)" || noticeType === "143(3)" || noticeType === "148";
+    const hasC = noticeType === "143(1)" || noticeType === "143(3)" || noticeType === "148";
+
+    const interest234A = hasA ? demand * 0.01 * months : 0;
+    const interest234B = hasB ? demand * 0.01 * months : 0;
+    const interest234C = hasC ? demand * 0.01 * months : 0;
+    const totalInterest = interest234A + interest234B + interest234C;
+    const totalDue = demand + totalInterest;
+    const penaltyMin = noticeType === "271" ? demand * 1 : 0;
+    const penaltyMax = noticeType === "271" ? demand * 3 : 0;
+
+    setResult({ months, interest234A, interest234B, interest234C, totalInterest, totalDue, overdueDays: days, penaltyMin, penaltyMax });
+  }, [taxDemand, noticeDate, paymentDate, noticeType]);
+
+  return (
+    <CalculatorShell
+      title="Income Tax Notice Interest Calculator"
+      subtitle="Section 234 interest and notice-related due computation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Tax Demand" value={taxDemand} onChange={setTaxDemand} />
+          <Field label="Notice Date"><input type="date" value={noticeDate} onChange={(e) => setNoticeDate(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" /></Field>
+          <Field label="Payment Date"><input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" /></Field>
+          <Field label="Notice Type">
+            <select value={noticeType} onChange={(e) => setNoticeType(e.target.value as "143(1)" | "143(3)" | "148" | "271")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["143(1)", "143(3)", "148", "271"] as const).map((t) => (<option key={t} value={t}>{t}</option>))}
+            </select>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Months" value={result.months.toLocaleString("en-IN")} />
+            <MiniStat label="Interest 234A" value={formatINR(result.interest234A)} />
+            <MiniStat label="Interest 234B" value={formatINR(result.interest234B)} />
+            <MiniStat label="Interest 234C" value={formatINR(result.interest234C)} />
+            <MiniStat label="Total Interest" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Total Due" value={formatINR(result.totalDue)} green />
+          </div>
+          <div className="card-surface p-4 border border-warning/40 text-sm text-warning">Payment urgency: overdue by {result.overdueDays.toLocaleString("en-IN")} days.</div>
+          {noticeType === "271" && (
+            <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Penalty range under 271(1)(c): {formatINR(result.penaltyMin)} to {formatINR(result.penaltyMax)}.</div>
+          )}
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Interest calculated as per Section 234 of Income Tax Act.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function StartupValuationCalc() {
+  const [annualRevenue, setAnnualRevenue] = useState("25000000");
+  const [revenueGrowthRate, setRevenueGrowthRate] = useState("35");
+  const [netMargin, setNetMargin] = useState("18");
+  const [industryRevenueMultiple, setIndustryRevenueMultiple] = useState("4");
+  const [industryEBITDAMultiple, setIndustryEBITDAMultiple] = useState("10");
+  const [totalFunding, setTotalFunding] = useState("50000000");
+  const [berkusIdea, setBerkusIdea] = useState(true);
+  const [berkusPrototype, setBerkusPrototype] = useState(true);
+  const [berkusManagement, setBerkusManagement] = useState(true);
+  const [berkusRelations, setBerkusRelations] = useState(false);
+  const [berkusRollout, setBerkusRollout] = useState(false);
+  const [result, setResult] = useState({
+    revenueMultipleValue: 0,
+    ebitdaMultipleValue: 0,
+    berkusValue: 0,
+    vcMethodValue: 0,
+    averageValue: 0,
+    suggestedDilution: 0,
+  });
+
+  useEffect(() => {
+    const rev = toNum(annualRevenue);
+    const growth = toNum(revenueGrowthRate) / 100;
+    const margin = toNum(netMargin) / 100;
+    const revMult = toNum(industryRevenueMultiple);
+    const ebitdaMult = toNum(industryEBITDAMultiple);
+    const funding = toNum(totalFunding);
+
+    const revenueMultipleValue = rev * revMult;
+    const ebitdaMultipleValue = rev * margin * ebitdaMult;
+    const berkusFactors = [berkusIdea, berkusPrototype, berkusManagement, berkusRelations, berkusRollout].filter(Boolean).length;
+    const berkusValue = berkusFactors * 500000 * 83;
+    const projectedRevenue5Y = rev * (1 + growth) ** 5;
+    const terminalValue = projectedRevenue5Y * revMult;
+    const vcMethodValue = terminalValue / (1 + 0.5) ** 5;
+    const averageValue = (revenueMultipleValue + ebitdaMultipleValue + berkusValue + vcMethodValue) / 4;
+    const suggestedDilution = averageValue > 0 ? (funding / averageValue) * 20 : 0;
+
+    setResult({ revenueMultipleValue, ebitdaMultipleValue, berkusValue, vcMethodValue, averageValue, suggestedDilution });
+  }, [annualRevenue, revenueGrowthRate, netMargin, industryRevenueMultiple, industryEBITDAMultiple, totalFunding, berkusIdea, berkusPrototype, berkusManagement, berkusRelations, berkusRollout]);
+
+  const berkusItems = [
+    { label: "Sound idea", value: berkusIdea, set: setBerkusIdea },
+    { label: "Prototype", value: berkusPrototype, set: setBerkusPrototype },
+    { label: "Quality management", value: berkusManagement, set: setBerkusManagement },
+    { label: "Strategic relationships", value: berkusRelations, set: setBerkusRelations },
+    { label: "Product rollout/sales", value: berkusRollout, set: setBerkusRollout },
+  ];
+
+  return (
+    <CalculatorShell
+      title="Startup Valuation Calculator"
+      subtitle="Revenue, EBITDA, Berkus and VC method side-by-side"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Annual Revenue" value={annualRevenue} onChange={setAnnualRevenue} />
+          <NumberInput label="Revenue Growth Rate (%)" value={revenueGrowthRate} onChange={setRevenueGrowthRate} />
+          <NumberInput label="Net Margin (%)" value={netMargin} onChange={setNetMargin} />
+          <NumberInput label="Industry Revenue Multiple" value={industryRevenueMultiple} onChange={setIndustryRevenueMultiple} />
+          <NumberInput label="Industry EBITDA Multiple" value={industryEBITDAMultiple} onChange={setIndustryEBITDAMultiple} />
+          <MoneyInput label="Total Funding Raised" value={totalFunding} onChange={setTotalFunding} />
+          <Field label="Berkus Factors (Each worth up to $500K)">
+            <div className="space-y-2">
+              {berkusItems.map((item) => (
+                <button key={item.label} onClick={() => item.set(!item.value)} className={cn("w-full py-2 text-xs font-medium rounded-md border transition-all text-left px-3", item.value ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{item.label}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Revenue Multiple" value={formatINR(result.revenueMultipleValue)} />
+            <MiniStat label="EBITDA Multiple" value={formatINR(result.ebitdaMultipleValue)} />
+            <MiniStat label="Berkus Method" value={formatINR(result.berkusValue)} />
+            <MiniStat label="VC Method" value={formatINR(result.vcMethodValue)} />
+            <MiniStat label="Average Valuation" value={formatINR(result.averageValue)} green />
+            <MiniStat label="Suggested Dilution @20% round" value={formatPct(result.suggestedDilution)} />
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function TaxPlanningCalc() {
+  const [annualIncome, setAnnualIncome] = useState("1800000");
+  const [currentRegime, setCurrentRegime] = useState<"new" | "old">("new");
+  const [current80C, setCurrent80C] = useState("80000");
+  const [current80D, setCurrent80D] = useState("10000");
+  const [hasNPS, setHasNPS] = useState(false);
+  const [rentPaid, setRentPaid] = useState("25000");
+  const [basicSalary, setBasicSalary] = useState("90000");
+  const [cityType, setCityType] = useState<"metro" | "non-metro">("metro");
+  const [homeLoanInterest, setHomeLoanInterest] = useState("120000");
+  const [result, setResult] = useState({
+    currentTaxNew: 0,
+    currentTaxOld: 0,
+    betterRegime: "",
+    optimizedTax: 0,
+    totalPotentialSaving: 0,
+    actions: [] as Array<{ action: string; saving: number }>,
+  });
+
+  useEffect(() => {
+    const income = toNum(annualIncome);
+    const ded80cUsed = Math.min(toNum(current80C), 150000);
+    const ded80dUsed = Math.min(toNum(current80D), 25000);
+    const annualRent = toNum(rentPaid) * 12;
+    const annualBasic = toNum(basicSalary) * 12;
+    const hraCap = annualBasic * (cityType === "metro" ? 0.5 : 0.4);
+    const hraPotential = Math.max(0, Math.min(hraCap, annualRent - annualBasic * 0.1));
+    const homeLoanDed = Math.min(200000, toNum(homeLoanInterest));
+
+    const taxNew = calculateSlabTax(Math.max(0, income), NEW_REGIME_SLABS).baseTax * 1.04;
+    const oldBaseTaxable = Math.max(0, income - ded80cUsed - ded80dUsed - (hasNPS ? 50000 : 0) - hraPotential - homeLoanDed);
+    const taxOld = calculateSlabTax(oldBaseTaxable, OLD_REGIME_SLABS).baseTax * 1.04;
+
+    const betterRegime = taxNew <= taxOld ? "New Regime" : "Old Regime";
+    const baseTax = currentRegime === "new" ? taxNew : taxOld;
+
+    const remaining80C = Math.max(0, 150000 - ded80cUsed);
+    const remaining80D = Math.max(0, 25000 - ded80dUsed);
+    const npsExtra = hasNPS ? 0 : 50000;
+    const homeLoanExtra = Math.max(0, 200000 - homeLoanDed);
+
+    const effectiveSlab = income > 1500000 ? 0.3 : income > 1000000 ? 0.2 : 0.1;
+    const actions = [
+      { action: "Use remaining Section 80C capacity", saving: remaining80C * effectiveSlab },
+      { action: "Use NPS 80CCD(1B) additional deduction", saving: npsExtra * effectiveSlab },
+      { action: "Claim HRA exemption if eligible", saving: hraPotential * effectiveSlab },
+      { action: "Use unused 80D health insurance deduction", saving: remaining80D * effectiveSlab },
+      { action: "Use Section 24 home loan interest deduction", saving: homeLoanExtra * effectiveSlab },
+    ];
+
+    const totalPotentialSaving = actions.reduce((sum, row) => sum + row.saving, 0);
+    const optimizedTax = Math.max(0, baseTax - totalPotentialSaving);
+
+    setResult({ currentTaxNew: taxNew, currentTaxOld: taxOld, betterRegime, optimizedTax, totalPotentialSaving, actions });
+  }, [annualIncome, currentRegime, current80C, current80D, hasNPS, rentPaid, basicSalary, cityType, homeLoanInterest]);
+
+  return (
+    <CalculatorShell
+      title="Tax Planning & Saving Optimizer"
+      subtitle="Regime comparison with prioritized tax-saving actions"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Annual Income" value={annualIncome} onChange={setAnnualIncome} />
+          <Field label="Current Regime">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["new", "old"] as const).map((r) => (
+                <button key={r} onClick={() => setCurrentRegime(r)} className={cn("py-2 text-xs font-medium rounded-md transition-all uppercase", currentRegime === r ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{r}</button>
+              ))}
+            </div>
+          </Field>
+          <MoneyInput label="Current 80C" value={current80C} onChange={setCurrent80C} />
+          <MoneyInput label="Current 80D" value={current80D} onChange={setCurrent80D} />
+          <Field label="Has NPS (80CCD)">
+            <button onClick={() => setHasNPS((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", hasNPS ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{hasNPS ? "Yes" : "No"}</button>
+          </Field>
+          <MoneyInput label="Rent Paid (Monthly)" value={rentPaid} onChange={setRentPaid} />
+          <MoneyInput label="Basic Salary (Monthly)" value={basicSalary} onChange={setBasicSalary} />
+          <Field label="City Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["metro", "non-metro"] as const).map((c) => (
+                <button key={c} onClick={() => setCityType(c)} className={cn("py-2 text-xs font-medium rounded-md transition-all capitalize", cityType === c ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{c}</button>
+              ))}
+            </div>
+          </Field>
+          <MoneyInput label="Home Loan Interest" value={homeLoanInterest} onChange={setHomeLoanInterest} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Current Tax (New Regime)" value={formatINR(result.currentTaxNew)} />
+            <MiniStat label="Current Tax (Old Regime)" value={formatINR(result.currentTaxOld)} />
+            <MiniStat label="Optimized Tax" value={formatINR(result.optimizedTax)} green />
+            <MiniStat label="Total Potential Saving" value={formatINR(result.totalPotentialSaving)} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Better Regime: <span className="text-white font-medium">{result.betterRegime}</span></div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Prioritized Action List</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  {result.actions.sort((a, b) => b.saving - a.saving).map((row, index) => (
+                    <tr key={row.action} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{index + 1}. {row.action}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.saving)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
