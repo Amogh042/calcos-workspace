@@ -54,6 +54,26 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "uae-vat": UAEVATCalc,
   "uk-vat": UKVATCalc,
   "sg-income-tax": SGIncomeTaxCalc,
+  "debt-equity": DebtEquityCalc,
+  "leave-encashment": LeaveEncashmentCalc,
+  "capital-gains-property": CapitalGainsPropertyCalc,
+  "depreciation-it": ITDepreciationCalc,
+  "net-worth": NetWorthCalc,
+  "working-capital": WorkingCapitalCalc,
+  "bond-valuation": BondValuationCalc,
+  "depreciation-syd": SYDCalc,
+  "profitability-ratios": ProfitabilityRatiosCalc,
+  "rent-vs-buy": RentVsBuyCalc,
+  "huf-tax": HUFTaxCalc,
+  "form-16": Form16Calc,
+  "tds-salary": TDSSalaryCalc,
+  "gst-composition": GSTCompositionCalc,
+  "export-under-gst": ExportGSTCalc,
+  "mis-calculator": MISCalc,
+  "sukanya-samriddhi": SSYCalc,
+  "nps-calculator": NPSCalc,
+  "senior-citizen-fd": SCFDCalc,
+  "gratuity-eligibility": GratuityEligibilityCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -102,6 +122,26 @@ const titleMap: Record<string, string> = {
   "uae-vat": "UAE VAT Calculator",
   "uk-vat": "UK VAT Calculator",
   "sg-income-tax": "Singapore Income Tax Calculator",
+  "debt-equity": "Debt to Equity & Leverage Ratios",
+  "leave-encashment": "Leave Encashment Tax Calculator",
+  "capital-gains-property": "Property Capital Gains Calculator",
+  "depreciation-it": "Income Tax Act Depreciation",
+  "net-worth": "Personal Net Worth Calculator",
+  "working-capital": "Working Capital Analysis",
+  "bond-valuation": "Bond Valuation Calculator",
+  "depreciation-syd": "Sum of Years Digits Depreciation",
+  "profitability-ratios": "Profitability Ratios Dashboard",
+  "rent-vs-buy": "Rent vs Buy Analysis",
+  "huf-tax": "HUF Tax Calculator",
+  "form-16": "Form 16 / Salary Tax Computation",
+  "tds-salary": "TDS on Salary Calculator (Section 192)",
+  "gst-composition": "GST Composition Scheme Calculator",
+  "export-under-gst": "GST on Exports Calculator",
+  "mis-calculator": "Post Office MIS Calculator",
+  "sukanya-samriddhi": "Sukanya Samriddhi Yojana Calculator",
+  "nps-calculator": "NPS (National Pension System) Calculator",
+  "senior-citizen-fd": "Senior Citizen FD & Savings Calculator",
+  "gratuity-eligibility": "Gratuity Eligibility & Computation (Detailed)",
 };
 
 const categoryMap: Record<string, string> = {
@@ -150,6 +190,26 @@ const categoryMap: Record<string, string> = {
   "uae-vat": "gst",
   "uk-vat": "gst",
   "sg-income-tax": "tax",
+  "debt-equity": "ratios",
+  "leave-encashment": "tax",
+  "capital-gains-property": "tax",
+  "depreciation-it": "depreciation",
+  "net-worth": "ratios",
+  "working-capital": "ratios",
+  "bond-valuation": "valuation",
+  "depreciation-syd": "depreciation",
+  "profitability-ratios": "ratios",
+  "rent-vs-buy": "realestate",
+  "huf-tax": "tax",
+  "form-16": "tax",
+  "tds-salary": "tax",
+  "gst-composition": "gst",
+  "export-under-gst": "gst",
+  "mis-calculator": "investment",
+  "sukanya-samriddhi": "investment",
+  "nps-calculator": "investment",
+  "senior-citizen-fd": "investment",
+  "gratuity-eligibility": "payroll",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -5470,6 +5530,2562 @@ function SGIncomeTaxCalc() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function DebtEquityCalc() {
+  const [totalDebt, setTotalDebt] = useState("2500000");
+  const [totalEquity, setTotalEquity] = useState("1800000");
+  const [totalAssets, setTotalAssets] = useState("5000000");
+  const [ebit, setEbit] = useState("900000");
+  const [interestExpense, setInterestExpense] = useState("220000");
+  const [netIncome, setNetIncome] = useState("600000");
+  const [totalRevenue, setTotalRevenue] = useState("7500000");
+  const [cards, setCards] = useState(
+    [] as Array<{
+      key: string;
+      label: string;
+      value: number;
+      healthyRange: string;
+      interpretation: string;
+      status: "Healthy" | "Caution" | "Risk";
+    }>
+  );
+
+  useEffect(() => {
+    const debt = toNum(totalDebt);
+    const equity = toNum(totalEquity);
+    const assets = toNum(totalAssets);
+    const ebitValue = toNum(ebit);
+    const interest = toNum(interestExpense);
+    const net = toNum(netIncome);
+    const revenue = toNum(totalRevenue);
+
+    const safeDiv = (num: number, den: number): number => (den > 0 ? num / den : 0);
+    const debtToEquity = safeDiv(debt, equity);
+    const debtToAssets = safeDiv(debt, assets);
+    const equityRatio = safeDiv(equity, assets);
+    const interestCoverage = safeDiv(ebitValue, interest);
+    const financialLeverage = safeDiv(assets, equity);
+    const debtServiceCoverage = safeDiv(net, interest);
+
+    const asStatus = (value: number, healthy: (v: number) => boolean, caution: (v: number) => boolean) => {
+      if (healthy(value)) return "Healthy" as const;
+      if (caution(value)) return "Caution" as const;
+      return "Risk" as const;
+    };
+
+    setCards([
+      {
+        key: "de",
+        label: "Debt to Equity",
+        value: debtToEquity,
+        healthyRange: "Healthy: < 2.00",
+        interpretation: "Shows leverage relative to shareholder capital.",
+        status: asStatus(debtToEquity, (v) => v < 2, (v) => v < 3),
+      },
+      {
+        key: "da",
+        label: "Debt to Assets",
+        value: debtToAssets,
+        healthyRange: "Healthy: < 0.50",
+        interpretation: "Indicates what portion of assets is financed by debt.",
+        status: asStatus(debtToAssets, (v) => v < 0.5, (v) => v < 0.7),
+      },
+      {
+        key: "eq",
+        label: "Equity Ratio",
+        value: equityRatio,
+        healthyRange: "Healthy: > 0.50",
+        interpretation: "Higher ratio means stronger equity cushion.",
+        status: asStatus(equityRatio, (v) => v > 0.5, (v) => v > 0.35),
+      },
+      {
+        key: "ic",
+        label: "Interest Coverage",
+        value: interestCoverage,
+        healthyRange: "Healthy: > 3.00",
+        interpretation: "Measures capacity to service interest from operating profit.",
+        status: asStatus(interestCoverage, (v) => v > 3, (v) => v > 1.5),
+      },
+      {
+        key: "fl",
+        label: "Financial Leverage",
+        value: financialLeverage,
+        healthyRange: "Context-based (lower is safer)",
+        interpretation: "Reflects asset base supported by each unit of equity.",
+        status: asStatus(financialLeverage, (v) => v <= 2.5, (v) => v <= 4),
+      },
+      {
+        key: "dsc",
+        label: "Debt Service Coverage",
+        value: debtServiceCoverage,
+        healthyRange: "Healthy: > 1.25",
+        interpretation: "Tracks ability to meet debt obligations from earnings.",
+        status: asStatus(debtServiceCoverage, (v) => v > 1.25, (v) => v > 1),
+      },
+      {
+        key: "rev",
+        label: "Debt to Revenue",
+        value: safeDiv(debt, revenue),
+        healthyRange: "Lower is better",
+        interpretation: "Optional leverage context against top-line capacity.",
+        status: asStatus(safeDiv(debt, revenue), (v) => v < 0.4, (v) => v < 0.7),
+      },
+    ].slice(0, 6));
+  }, [totalDebt, totalEquity, totalAssets, ebit, interestExpense, netIncome, totalRevenue]);
+
+  return (
+    <CalculatorShell
+      title="Debt to Equity & Leverage Ratios"
+      subtitle="Six key solvency and coverage ratios with health flags"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Total Debt" value={totalDebt} onChange={setTotalDebt} />
+          <MoneyInput label="Total Equity" value={totalEquity} onChange={setTotalEquity} />
+          <MoneyInput label="Total Assets" value={totalAssets} onChange={setTotalAssets} />
+          <MoneyInput label="EBIT" value={ebit} onChange={setEbit} />
+          <MoneyInput label="Interest Expense" value={interestExpense} onChange={setInterestExpense} />
+          <MoneyInput label="Net Income" value={netIncome} onChange={setNetIncome} />
+          <MoneyInput label="Total Revenue" value={totalRevenue} onChange={setTotalRevenue} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {cards.map((card) => (
+            <div key={card.key} className="card-surface p-4 space-y-2">
+              <div className="text-xs uppercase tracking-wide text-tertiary">{card.label}</div>
+              <div className="text-2xl font-bold text-gradient-orange">{formatNum(card.value, 2)}x</div>
+              <div className="text-[11px] text-secondary">{card.healthyRange}</div>
+              <div className="text-xs text-secondary">{card.interpretation}</div>
+              <span className={cn(
+                "inline-flex px-2 py-0.5 rounded-pill text-[10px] font-semibold border",
+                card.status === "Healthy"
+                  ? "text-success border-success/40 bg-success/10"
+                  : card.status === "Caution"
+                    ? "text-warning border-warning/40 bg-warning/10"
+                    : "text-red-400 border-red-400/40 bg-red-400/10"
+              )}>
+                {card.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    />
+  );
+}
+
+function LeaveEncashmentCalc() {
+  const [basicSalary, setBasicSalary] = useState("90000");
+  const [daPay, setDaPay] = useState("15000");
+  const [leavesEncashed, setLeavesEncashed] = useState("180");
+  const [totalServiceYears, setTotalServiceYears] = useState("12");
+  const [isGovernmentEmployee, setIsGovernmentEmployee] = useState(false);
+  const [result, setResult] = useState({
+    totalEncashment: 0,
+    exemptAmount: 0,
+    taxableAmount: 0,
+    limits: [] as Array<{ key: "actual" | "tenMonths" | "cashEquivalent" | "statutory"; label: string; value: number }>,
+    appliedLimit: "actual" as "actual" | "tenMonths" | "cashEquivalent" | "statutory",
+  });
+
+  useEffect(() => {
+    const basic = toNum(basicSalary);
+    const da = toNum(daPay);
+    const leaves = Math.max(0, Math.floor(toNum(leavesEncashed)));
+    const years = Math.max(0, Math.floor(toNum(totalServiceYears)));
+    const averageSalary = basic + da;
+    const totalEncashment = averageSalary / 26 * leaves;
+
+    const maxEarnedLeaveDays = years * 30;
+    const eligibleLeaveDays = Math.min(leaves, maxEarnedLeaveDays);
+    const cashEquivalent = averageSalary / 26 * eligibleLeaveDays;
+    const tenMonthsAverageSalary = averageSalary * 10;
+    const statutoryLimit = 2500000;
+
+    const limits: Array<{ key: "actual" | "tenMonths" | "cashEquivalent" | "statutory"; label: string; value: number }> = [
+      { key: "actual", label: "Actual leave encashment received", value: totalEncashment },
+      { key: "tenMonths", label: "10 months average salary", value: tenMonthsAverageSalary },
+      { key: "cashEquivalent", label: "Cash equivalent of earned leave", value: cashEquivalent },
+      { key: "statutory", label: "Statutory limit under Section 10(10AA)", value: statutoryLimit },
+    ];
+
+    let exemptAmount = totalEncashment;
+    let appliedLimit: "actual" | "tenMonths" | "cashEquivalent" | "statutory" = "actual";
+    if (!isGovernmentEmployee) {
+      const minLimit = limits.reduce((acc, item) => (item.value < acc.value ? item : acc), limits[0]);
+      exemptAmount = minLimit.value;
+      appliedLimit = minLimit.key;
+    }
+
+    const taxableAmount = Math.max(0, totalEncashment - exemptAmount);
+    setResult({ totalEncashment, exemptAmount, taxableAmount, limits, appliedLimit });
+  }, [basicSalary, daPay, leavesEncashed, totalServiceYears, isGovernmentEmployee]);
+
+  return (
+    <CalculatorShell
+      title="Leave Encashment Tax Calculator"
+      subtitle="Compute exemption and taxable amount under Section 10(10AA)"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Monthly Basic Salary" value={basicSalary} onChange={setBasicSalary} />
+          <MoneyInput label="Monthly DA" value={daPay} onChange={setDaPay} />
+          <NumberInput label="Leaves Encashed (Days)" value={leavesEncashed} onChange={setLeavesEncashed} />
+          <NumberInput label="Total Service Years" value={totalServiceYears} onChange={setTotalServiceYears} />
+
+          <Field label="Government Employee">
+            <button
+              onClick={() => setIsGovernmentEmployee((v) => !v)}
+              className={cn(
+                "w-full py-2 text-sm font-medium rounded-md transition-all border",
+                isGovernmentEmployee
+                  ? "bg-gradient-orange text-white glow-orange border-transparent"
+                  : "text-secondary border-white/10 hover:text-white"
+              )}
+            >
+              {isGovernmentEmployee ? "Yes" : "No"}
+            </button>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total Encashment" value={formatINR(result.totalEncashment)} />
+            <MiniStat label="Exempt Amount" value={formatINR(result.exemptAmount)} green />
+            <MiniStat label="Taxable Amount" value={formatINR(result.taxableAmount)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Exemption Limits</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Limit</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.limits.map((row, index) => (
+                    <tr key={row.key} className={cn(index % 2 ? "bg-white/[0.02]" : "", !isGovernmentEmployee && result.appliedLimit === row.key && "bg-primary/10")}>
+                      <td className="px-5 py-2 text-secondary">{row.label}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            {isGovernmentEmployee
+              ? "Government employee: leave encashment is fully exempt under Section 10(10AA)."
+              : "Exempt under Section 10(10AA). Applied limit is highlighted above."}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function CapitalGainsPropertyCalc() {
+  const ciiYears = Object.keys(CII_TABLE).map((y) => Number(y)).sort((a, b) => a - b);
+  const [purchasePrice, setPurchasePrice] = useState("4500000");
+  const [salePrice, setSalePrice] = useState("8500000");
+  const [purchaseYear, setPurchaseYear] = useState(String(ciiYears[ciiYears.length - 3] ?? 2022));
+  const [saleYear, setSaleYear] = useState(String(ciiYears[ciiYears.length - 1] ?? 2024));
+  const [stampDutyPaid, setStampDutyPaid] = useState("350000");
+  const [improvementCost, setImprovementCost] = useState("500000");
+  const [brokerageSalePercent, setBrokerageSalePercent] = useState("1.5");
+  const [slabRate, setSlabRate] = useState("30");
+  const [result, setResult] = useState({
+    holdingPeriod: 0,
+    gainAmount: 0,
+    indexedCost: 0,
+    indexedImprovement: 0,
+    netSalePrice: 0,
+    saleExpenses: 0,
+    tax20Indexation: 0,
+    tax12_5NoIndexation: 0,
+    stcgTaxAtSlab: 0,
+    gainType: "LTCG" as "LTCG" | "STCG",
+  });
+
+  useEffect(() => {
+    const purchase = toNum(purchasePrice);
+    const sale = toNum(salePrice);
+    const pYear = Math.floor(toNum(purchaseYear));
+    const sYear = Math.floor(toNum(saleYear));
+    const stampDuty = toNum(stampDutyPaid);
+    const improve = toNum(improvementCost);
+    const brokeragePct = toNum(brokerageSalePercent);
+    const slab = toNum(slabRate);
+
+    const holdingPeriod = Math.max(0, sYear - pYear);
+    const saleExpenses = sale * brokeragePct / 100;
+    const netSalePrice = Math.max(0, sale - saleExpenses);
+    const purchaseCII = getCIIForYear(pYear);
+    const saleCII = getCIIForYear(sYear);
+    const indexFactor = purchaseCII > 0 ? saleCII / purchaseCII : 1;
+
+    const indexedCost = (purchase + stampDuty) * indexFactor;
+    const indexedImprovement = improve * indexFactor;
+
+    if (holdingPeriod >= 2) {
+      const ltcgIndexed = Math.max(0, netSalePrice - indexedCost - indexedImprovement);
+      const ltcgNoIndex = Math.max(0, netSalePrice - (purchase + stampDuty + improve));
+      const tax20Indexation = ltcgIndexed * 0.2;
+      const tax12_5NoIndexation = ltcgNoIndex * 0.125;
+
+      setResult({
+        holdingPeriod,
+        gainAmount: ltcgIndexed,
+        indexedCost,
+        indexedImprovement,
+        netSalePrice,
+        saleExpenses,
+        tax20Indexation,
+        tax12_5NoIndexation,
+        stcgTaxAtSlab: 0,
+        gainType: "LTCG",
+      });
+      return;
+    }
+
+    const stcg = Math.max(0, netSalePrice - (purchase + stampDuty + improve));
+    setResult({
+      holdingPeriod,
+      gainAmount: stcg,
+      indexedCost,
+      indexedImprovement,
+      netSalePrice,
+      saleExpenses,
+      tax20Indexation: 0,
+      tax12_5NoIndexation: 0,
+      stcgTaxAtSlab: stcg * slab / 100,
+      gainType: "STCG",
+    });
+  }, [purchasePrice, salePrice, purchaseYear, saleYear, stampDutyPaid, improvementCost, brokerageSalePercent, slabRate]);
+
+  return (
+    <CalculatorShell
+      title="Property Capital Gains Calculator"
+      subtitle="LTCG/STCG with indexation and tax option comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Purchase Price" value={purchasePrice} onChange={setPurchasePrice} />
+          <MoneyInput label="Sale Price" value={salePrice} onChange={setSalePrice} />
+
+          <Field label="Purchase Year (CII)">
+            <select
+              value={purchaseYear}
+              onChange={(e) => setPurchaseYear(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            >
+              {ciiYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Sale Year (CII)">
+            <select
+              value={saleYear}
+              onChange={(e) => setSaleYear(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            >
+              {ciiYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </Field>
+
+          <MoneyInput label="Stamp Duty Paid" value={stampDutyPaid} onChange={setStampDutyPaid} />
+          <MoneyInput label="Improvement Cost" value={improvementCost} onChange={setImprovementCost} />
+          <NumberInput label="Brokerage on Sale (%)" value={brokerageSalePercent} onChange={setBrokerageSalePercent} />
+          <NumberInput label="Slab Rate for STCG (%)" value={slabRate} onChange={setSlabRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Holding Period (Years)" value={result.holdingPeriod.toLocaleString("en-IN")} />
+            <MiniStat label="Net Sale Price" value={formatINR(result.netSalePrice)} />
+            <MiniStat label="Sale Expenses" value={formatINR(result.saleExpenses)} />
+            <MiniStat label="Indexed Cost" value={formatINR(result.indexedCost)} />
+            <MiniStat label="Gain Amount" value={formatINR(result.gainAmount)} green />
+          </div>
+
+          {result.gainType === "LTCG" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="card-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-tertiary">Tax Option 1</div>
+                <div className="mt-2 text-sm text-secondary">20% with indexation</div>
+                <div className="text-xl font-bold text-gradient-orange">{formatINR(result.tax20Indexation)}</div>
+              </div>
+              <div className="card-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-tertiary">Tax Option 2</div>
+                <div className="mt-2 text-sm text-secondary">12.5% without indexation</div>
+                <div className="text-xl font-bold text-gradient-orange">{formatINR(result.tax12_5NoIndexation)}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="card-surface p-4">
+              <div className="text-sm text-secondary">STCG taxed at slab rate</div>
+              <div className="text-xl font-bold text-gradient-orange">{formatINR(result.stcgTaxAtSlab)}</div>
+            </div>
+          )}
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Note: Exemption may be available under Sections 54/54F if reinvested in eligible property.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ITDepreciationCalc() {
+  const assetRates = {
+    "Buildings (residential)": 5,
+    "Buildings (commercial)": 10,
+    "Furniture & Fittings": 10,
+    "Plant & Machinery (general)": 15,
+    "Motor Cars": 15,
+    "Computers & Software": 40,
+    "Intangible Assets": 25,
+    Ships: 20,
+  } as const;
+
+  const [assetBlock, setAssetBlock] = useState<keyof typeof assetRates>("Plant & Machinery (general)");
+  const [purchaseCost, setPurchaseCost] = useState("1000000");
+  const [dateOfPurchase, setDateOfPurchase] = useState("2025-11-15");
+  const [financialYearEnd, setFinancialYearEnd] = useState("2026-03-31");
+  const [result, setResult] = useState({
+    fullYearDepreciation: 0,
+    applicableDepreciation: 0,
+    closingWDV: 0,
+    taxSavingAtSlab30: 0,
+    schedule: [] as Array<{ year: number; openingWDV: number; rate: number; depreciation: number; closingWDV: number }> ,
+  });
+
+  useEffect(() => {
+    const cost = Math.max(0, toNum(purchaseCost));
+    const rate = assetRates[assetBlock];
+    const purchaseDate = new Date(dateOfPurchase);
+    const fyEndDate = new Date(financialYearEnd);
+    const fyStartYear = fyEndDate.getFullYear() - 1;
+    const halfYearCutoff = new Date(fyStartYear, 9, 1);
+    const halfYearRule = purchaseDate > halfYearCutoff;
+
+    const fullYearDepreciation = cost * rate / 100;
+    const firstYearRate = halfYearRule ? rate / 2 : rate;
+    const applicableDepreciation = cost * firstYearRate / 100;
+    const closingWDV = Math.max(0, cost - applicableDepreciation);
+    const taxSavingAtSlab30 = applicableDepreciation * 0.3;
+
+    const schedule: Array<{ year: number; openingWDV: number; rate: number; depreciation: number; closingWDV: number }> = [];
+    let opening = cost;
+    for (let y = 1; y <= 5; y += 1) {
+      const appliedRate = y === 1 ? firstYearRate : rate;
+      const depreciation = opening * appliedRate / 100;
+      const closing = Math.max(0, opening - depreciation);
+      schedule.push({ year: y, openingWDV: opening, rate: appliedRate, depreciation, closingWDV: closing });
+      opening = closing;
+    }
+
+    setResult({ fullYearDepreciation, applicableDepreciation, closingWDV, taxSavingAtSlab30, schedule });
+  }, [assetBlock, purchaseCost, dateOfPurchase, financialYearEnd]);
+
+  return (
+    <CalculatorShell
+      title="Income Tax Act Depreciation"
+      subtitle="Block-rate depreciation with half-year rule and 5-year WDV schedule"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <Field label="Asset Block">
+            <select
+              value={assetBlock}
+              onChange={(e) => setAssetBlock(e.target.value as keyof typeof assetRates)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            >
+              {Object.keys(assetRates).map((asset) => (
+                <option key={asset} value={asset}>{asset}</option>
+              ))}
+            </select>
+          </Field>
+
+          <MoneyInput label="Purchase Cost" value={purchaseCost} onChange={setPurchaseCost} />
+
+          <Field label="Date of Purchase">
+            <input
+              type="date"
+              value={dateOfPurchase}
+              onChange={(e) => setDateOfPurchase(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+
+          <Field label="Financial Year End">
+            <input
+              type="date"
+              value={financialYearEnd}
+              onChange={(e) => setFinancialYearEnd(e.target.value)}
+              className="glass-input w-full h-11 px-3 text-sm"
+            />
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Full-Year Depreciation" value={formatINR(result.fullYearDepreciation)} />
+            <MiniStat label="Applicable Depreciation" value={formatINR(result.applicableDepreciation)} />
+            <MiniStat label="Closing WDV" value={formatINR(result.closingWDV)} />
+            <MiniStat label="Tax Saving @ 30%" value={formatINR(result.taxSavingAtSlab30)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">5-Year Depreciation Schedule</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Opening WDV</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Depreciation</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Closing WDV</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.schedule.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.openingWDV)}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.depreciation)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.closingWDV)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function NetWorthCalc() {
+  type LineItem = { name: string; value: string };
+
+  const [assets, setAssets] = useState<LineItem[]>([
+    { name: "Cash & Bank", value: "500000" },
+    { name: "Mutual Funds", value: "700000" },
+    { name: "Stocks", value: "450000" },
+    { name: "PPF/EPF", value: "600000" },
+    { name: "Real Estate", value: "4500000" },
+    { name: "Gold", value: "300000" },
+    { name: "Vehicle", value: "650000" },
+    { name: "Other", value: "100000" },
+  ]);
+
+  const [liabilities, setLiabilities] = useState<LineItem[]>([
+    { name: "Home Loan", value: "2800000" },
+    { name: "Car Loan", value: "250000" },
+    { name: "Personal Loan", value: "100000" },
+    { name: "Credit Card", value: "45000" },
+    { name: "Other Loans", value: "50000" },
+  ]);
+
+  const [result, setResult] = useState({
+    totalAssets: 0,
+    totalLiabilities: 0,
+    netWorth: 0,
+    debtToAssetRatio: 0,
+    assetBreakdown: [] as Array<{ name: string; value: number; pct: number }>,
+    liabilityBreakdown: [] as Array<{ name: string; value: number; pct: number }>,
+  });
+
+  useEffect(() => {
+    const assetRows = assets.map((item) => ({ name: item.name || "Unnamed Asset", value: toNum(item.value) }));
+    const liabilityRows = liabilities.map((item) => ({ name: item.name || "Unnamed Liability", value: toNum(item.value) }));
+
+    const totalAssets = assetRows.reduce((sum, item) => sum + item.value, 0);
+    const totalLiabilities = liabilityRows.reduce((sum, item) => sum + item.value, 0);
+    const netWorth = totalAssets - totalLiabilities;
+    const debtToAssetRatio = totalAssets > 0 ? totalLiabilities / totalAssets * 100 : 0;
+
+    const assetBreakdown = assetRows
+      .filter((item) => item.value > 0)
+      .map((item) => ({ ...item, pct: totalAssets > 0 ? item.value / totalAssets * 100 : 0 }));
+
+    const liabilityBreakdown = liabilityRows
+      .filter((item) => item.value > 0)
+      .map((item) => ({ ...item, pct: totalLiabilities > 0 ? item.value / totalLiabilities * 100 : 0 }));
+
+    setResult({ totalAssets, totalLiabilities, netWorth, debtToAssetRatio, assetBreakdown, liabilityBreakdown });
+  }, [assets, liabilities]);
+
+  const updateItem = (
+    type: "asset" | "liability",
+    index: number,
+    patch: Partial<{ name: string; value: string }>
+  ) => {
+    if (type === "asset") {
+      setAssets((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+      return;
+    }
+    setLiabilities((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  };
+
+  const addItem = (type: "asset" | "liability") => {
+    if (type === "asset") {
+      setAssets((prev) => (prev.length >= 10 ? prev : [...prev, { name: "", value: "0" }]));
+      return;
+    }
+    setLiabilities((prev) => (prev.length >= 10 ? prev : [...prev, { name: "", value: "0" }]));
+  };
+
+  return (
+    <CalculatorShell
+      title="Personal Net Worth Calculator"
+      subtitle="Track assets, liabilities and leverage position"
+      inputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Assets</h2>
+              <button
+                onClick={() => addItem("asset")}
+                className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white"
+              >
+                Add Asset
+              </button>
+            </div>
+            {assets.map((item, index) => (
+              <div key={`asset-${index}`} className="grid grid-cols-[1fr_120px] gap-2">
+                <input
+                  value={item.name}
+                  onChange={(e) => updateItem("asset", index, { name: e.target.value })}
+                  placeholder="Asset name"
+                  className="glass-input h-10 px-3 text-sm"
+                />
+                <input
+                  inputMode="numeric"
+                  value={item.value}
+                  onChange={(e) => updateItem("asset", index, { value: e.target.value.replace(/[^0-9.]/g, "") })}
+                  placeholder="0"
+                  className="glass-input h-10 px-3 text-sm"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="card-surface p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Liabilities</h2>
+              <button
+                onClick={() => addItem("liability")}
+                className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white"
+              >
+                Add Liability
+              </button>
+            </div>
+            {liabilities.map((item, index) => (
+              <div key={`liability-${index}`} className="grid grid-cols-[1fr_120px] gap-2">
+                <input
+                  value={item.name}
+                  onChange={(e) => updateItem("liability", index, { name: e.target.value })}
+                  placeholder="Liability name"
+                  className="glass-input h-10 px-3 text-sm"
+                />
+                <input
+                  inputMode="numeric"
+                  value={item.value}
+                  onChange={(e) => updateItem("liability", index, { value: e.target.value.replace(/[^0-9.]/g, "") })}
+                  placeholder="0"
+                  className="glass-input h-10 px-3 text-sm"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total Assets" value={formatINR(result.totalAssets)} />
+            <MiniStat label="Total Liabilities" value={formatINR(result.totalLiabilities)} />
+            <div className="card-surface p-3 sm:col-span-2">
+              <div className="text-[10px] uppercase tracking-wide text-tertiary">Net Worth</div>
+              <div className={cn("mt-1 text-2xl font-bold", result.netWorth >= 0 ? "text-success" : "text-red-400")}>
+                ₹ {result.netWorth.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <MiniStat label="Debt to Asset Ratio" value={formatPct(result.debtToAssetRatio)} />
+          </div>
+
+          <div className="card-surface p-4 space-y-3">
+            <div className="text-sm font-semibold">Assets Breakdown</div>
+            {result.assetBreakdown.map((item) => (
+              <div key={`asset-bar-${item.name}`}>
+                <div className="flex justify-between text-xs text-secondary mb-1">
+                  <span>{item.name}</span>
+                  <span>{formatNum(item.pct, 2)}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-primary/10 overflow-hidden">
+                  <div className="h-full bg-gradient-orange" style={{ width: `${Math.min(100, item.pct)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="card-surface p-4 space-y-3">
+            <div className="text-sm font-semibold">Liabilities Breakdown</div>
+            {result.liabilityBreakdown.map((item) => (
+              <div key={`liability-bar-${item.name}`}>
+                <div className="flex justify-between text-xs text-secondary mb-1">
+                  <span>{item.name}</span>
+                  <span>{formatNum(item.pct, 2)}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-primary/10 overflow-hidden">
+                  <div className="h-full bg-red-400/80" style={{ width: `${Math.min(100, item.pct)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function WorkingCapitalCalc() {
+  const [currentAssets, setCurrentAssets] = useState("2500000");
+  const [currentLiabilities, setCurrentLiabilities] = useState("1400000");
+  const [inventory, setInventory] = useState("450000");
+  const [accountsReceivable, setAccountsReceivable] = useState("380000");
+  const [accountsPayable, setAccountsPayable] = useState("300000");
+  const [annualRevenue, setAnnualRevenue] = useState("7200000");
+  const [annualCOGS, setAnnualCOGS] = useState("4200000");
+  const [result, setResult] = useState({
+    workingCapital: 0,
+    currentRatio: 0,
+    quickRatio: 0,
+    cashRatio: 0,
+    daysReceivable: 0,
+    daysPayable: 0,
+    daysInventory: 0,
+    cashConversionCycle: 0,
+  });
+
+  useEffect(() => {
+    const ca = toNum(currentAssets);
+    const cl = toNum(currentLiabilities);
+    const inv = toNum(inventory);
+    const ar = toNum(accountsReceivable);
+    const ap = toNum(accountsPayable);
+    const revenue = toNum(annualRevenue);
+    const cogs = toNum(annualCOGS);
+
+    const safeDiv = (num: number, den: number) => (den > 0 ? num / den : 0);
+    const workingCapital = ca - cl;
+    const currentRatio = safeDiv(ca, cl);
+    const quickRatio = safeDiv(ca - inv, cl);
+    const cashRatio = safeDiv(ca - inv - ar, cl);
+    const daysReceivable = safeDiv(ar, revenue) * 365;
+    const daysPayable = safeDiv(ap, cogs) * 365;
+    const daysInventory = safeDiv(inv, cogs) * 365;
+    const cashConversionCycle = daysReceivable + daysInventory - daysPayable;
+
+    setResult({
+      workingCapital,
+      currentRatio,
+      quickRatio,
+      cashRatio,
+      daysReceivable,
+      daysPayable,
+      daysInventory,
+      cashConversionCycle,
+    });
+  }, [currentAssets, currentLiabilities, inventory, accountsReceivable, accountsPayable, annualRevenue, annualCOGS]);
+
+  const ratioStatus = (type: "current" | "quick" | "cash", value: number) => {
+    if (type === "current") {
+      if (value >= 1.5 && value <= 2.5) return "Healthy";
+      if (value >= 1) return "Caution";
+      return "Risk";
+    }
+    if (type === "quick") {
+      if (value >= 1) return "Healthy";
+      if (value >= 0.7) return "Caution";
+      return "Risk";
+    }
+    if (value >= 0.5) return "Healthy";
+    if (value >= 0.2) return "Caution";
+    return "Risk";
+  };
+
+  const cccText = result.cashConversionCycle < 0
+    ? "Negative cycle: business collects cash before paying suppliers."
+    : result.cashConversionCycle < 45
+      ? "Efficient cycle: lower CCC improves liquidity."
+      : "Long cycle: optimize inventory and collections to reduce CCC.";
+
+  return (
+    <CalculatorShell
+      title="Working Capital Analysis"
+      subtitle="Liquidity ratios and cash conversion cycle"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Current Assets" value={currentAssets} onChange={setCurrentAssets} />
+          <MoneyInput label="Current Liabilities" value={currentLiabilities} onChange={setCurrentLiabilities} />
+          <MoneyInput label="Inventory" value={inventory} onChange={setInventory} />
+          <MoneyInput label="Accounts Receivable" value={accountsReceivable} onChange={setAccountsReceivable} />
+          <MoneyInput label="Accounts Payable" value={accountsPayable} onChange={setAccountsPayable} />
+          <MoneyInput label="Annual Revenue" value={annualRevenue} onChange={setAnnualRevenue} />
+          <MoneyInput label="Annual COGS" value={annualCOGS} onChange={setAnnualCOGS} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Working Capital" value={formatINR(result.workingCapital)} green={result.workingCapital > 0} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { label: "Current Ratio", value: result.currentRatio, type: "current" as const },
+              { label: "Quick Ratio", value: result.quickRatio, type: "quick" as const },
+              { label: "Cash Ratio", value: result.cashRatio, type: "cash" as const },
+            ].map((row) => {
+              const status = ratioStatus(row.type, row.value);
+              return (
+                <div key={row.label} className="card-surface p-4 space-y-2">
+                  <div className="text-xs uppercase tracking-wide text-tertiary">{row.label}</div>
+                  <div className="text-xl font-bold text-gradient-orange">{formatNum(row.value, 2)}x</div>
+                  <span className={cn(
+                    "inline-flex px-2 py-0.5 rounded-pill text-[10px] font-semibold border",
+                    status === "Healthy"
+                      ? "text-success border-success/40 bg-success/10"
+                      : status === "Caution"
+                        ? "text-warning border-warning/40 bg-warning/10"
+                        : "text-red-400 border-red-400/40 bg-red-400/10"
+                  )}>
+                    {status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Working Capital Days Table</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Metric</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Days</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-5 py-2 text-secondary">DRO (Days Receivable Outstanding)</td>
+                    <td className="px-5 py-2 text-right font-medium">{result.daysReceivable.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                  <tr className="bg-white/[0.02]">
+                    <td className="px-5 py-2 text-secondary">DPO (Days Payable Outstanding)</td>
+                    <td className="px-5 py-2 text-right font-medium">{result.daysPayable.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-5 py-2 text-secondary">DIO (Days Inventory Outstanding)</td>
+                    <td className="px-5 py-2 text-right font-medium">{result.daysInventory.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Cash Conversion Cycle: <span className="font-semibold text-white">{result.cashConversionCycle.toLocaleString("en-IN", { maximumFractionDigits: 2 })} days</span>.
+            {" "}{cccText}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function BondValuationCalc() {
+  const [faceValue, setFaceValue] = useState("100000");
+  const [couponRate, setCouponRate] = useState("8");
+  const [marketRate, setMarketRate] = useState("9");
+  const [yearsToMaturity, setYearsToMaturity] = useState("10");
+  const [couponFrequency, setCouponFrequency] = useState<"annual" | "semi-annual">("annual");
+  const [result, setResult] = useState({
+    bondPrice: 0,
+    premiumDiscount: 0,
+    currentYield: 0,
+    cashFlows: [] as Array<{ year: number; couponCashFlow: number; principalCashFlow: number; totalCashFlow: number }>,
+  });
+
+  useEffect(() => {
+    const fv = toNum(faceValue);
+    const cRate = toNum(couponRate);
+    const mRate = toNum(marketRate);
+    const years = Math.max(1, Math.floor(toNum(yearsToMaturity)));
+
+    const periodsPerYear = couponFrequency === "semi-annual" ? 2 : 1;
+    const periodRate = mRate / 100 / periodsPerYear;
+    const totalPeriods = years * periodsPerYear;
+    const couponPayment = fv * (cRate / 100) / periodsPerYear;
+
+    let pvCoupons = 0;
+    if (periodRate === 0) {
+      pvCoupons = couponPayment * totalPeriods;
+    } else {
+      pvCoupons = couponPayment * (1 - (1 + periodRate) ** (-totalPeriods)) / periodRate;
+    }
+    const pvFaceValue = fv / (1 + periodRate) ** totalPeriods;
+    const bondPrice = pvCoupons + pvFaceValue;
+    const premiumDiscount = bondPrice - fv;
+    const currentYield = bondPrice > 0 ? (couponPayment * periodsPerYear) / bondPrice * 100 : 0;
+
+    const cashFlows = Array.from({ length: years }, (_, idx) => {
+      const year = idx + 1;
+      const couponCashFlow = couponPayment * periodsPerYear;
+      const principalCashFlow = year === years ? fv : 0;
+      return {
+        year,
+        couponCashFlow,
+        principalCashFlow,
+        totalCashFlow: couponCashFlow + principalCashFlow,
+      };
+    });
+
+    setResult({ bondPrice, premiumDiscount, currentYield, cashFlows });
+  }, [faceValue, couponRate, marketRate, yearsToMaturity, couponFrequency]);
+
+  return (
+    <CalculatorShell
+      title="Bond Valuation Calculator"
+      subtitle="Present value pricing with yield and premium/discount"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Face Value" value={faceValue} onChange={setFaceValue} />
+          <NumberInput label="Coupon Rate (%)" value={couponRate} onChange={setCouponRate} />
+          <NumberInput label="Market Rate (%)" value={marketRate} onChange={setMarketRate} />
+          <NumberInput label="Years to Maturity" value={yearsToMaturity} onChange={setYearsToMaturity} />
+
+          <Field label="Coupon Frequency">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["annual", "semi-annual"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setCouponFrequency(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all capitalize",
+                    couponFrequency === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Bond Price" value={formatINR(result.bondPrice)} />
+            <MiniStat
+              label="Premium / Discount"
+              value={`₹ ${Math.abs(result.premiumDiscount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
+              green={result.premiumDiscount >= 0}
+            />
+            <MiniStat label="Current Yield" value={formatPct(result.currentYield)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Year-by-Year Cash Flows</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Coupon</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Principal</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.cashFlows.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.couponCashFlow)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.principalCashFlow)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.totalCashFlow)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SYDCalc() {
+  const [assetCost, setAssetCost] = useState("1200000");
+  const [salvageValue, setSalvageValue] = useState("120000");
+  const [usefulLife, setUsefulLife] = useState("6");
+  const [result, setResult] = useState({
+    sumOfYears: 0,
+    yearOneDepreciation: 0,
+    schedule: [] as Array<{ year: number; fraction: string; sydDep: number; accumulated: number; bookValue: number; slmDep: number }>,
+  });
+
+  useEffect(() => {
+    const cost = toNum(assetCost);
+    const salvage = toNum(salvageValue);
+    const life = Math.max(1, Math.floor(toNum(usefulLife)));
+    const depreciable = Math.max(0, cost - salvage);
+    const sumOfYears = life * (life + 1) / 2;
+    const slmDep = life > 0 ? depreciable / life : 0;
+
+    let accumulated = 0;
+    const schedule = Array.from({ length: life }, (_, idx) => {
+      const year = idx + 1;
+      const numerator = life - year + 1;
+      const sydDep = sumOfYears > 0 ? (numerator / sumOfYears) * depreciable : 0;
+      accumulated += sydDep;
+      const bookValue = Math.max(salvage, cost - accumulated);
+      return {
+        year,
+        fraction: `${numerator}/${sumOfYears}`,
+        sydDep,
+        accumulated,
+        bookValue,
+        slmDep,
+      };
+    });
+
+    setResult({
+      sumOfYears,
+      yearOneDepreciation: schedule[0]?.sydDep ?? 0,
+      schedule,
+    });
+  }, [assetCost, salvageValue, usefulLife]);
+
+  return (
+    <CalculatorShell
+      title="Sum of Years Digits Depreciation"
+      subtitle="Accelerated depreciation schedule with SLM comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Asset Cost" value={assetCost} onChange={setAssetCost} />
+          <MoneyInput label="Salvage Value" value={salvageValue} onChange={setSalvageValue} />
+          <NumberInput label="Useful Life (Years)" value={usefulLife} onChange={setUsefulLife} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Sum of Years" value={result.sumOfYears.toLocaleString("en-IN")} />
+            <MiniStat label="Year 1 Depreciation" value={formatINR(result.yearOneDepreciation)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">SYD Full Schedule</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Fraction</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Depreciation</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Accumulated</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Book Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.schedule.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{row.fraction}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.sydDep)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.accumulated)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.bookValue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">SYD vs SLM (Depreciation Per Year)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">SYD</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">SLM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.schedule.map((row, index) => (
+                    <tr key={`compare-${row.year}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.sydDep)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.slmDep)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ProfitabilityRatiosCalc() {
+  const [revenue, setRevenue] = useState("10000000");
+  const [grossProfit, setGrossProfit] = useState("2800000");
+  const [ebitda, setEbitda] = useState("2200000");
+  const [ebit, setEbit] = useState("1700000");
+  const [netIncome, setNetIncome] = useState("1200000");
+  const [totalAssets, setTotalAssets] = useState("9000000");
+  const [totalEquity, setTotalEquity] = useState("4200000");
+  const [capitalEmployed, setCapitalEmployed] = useState("6500000");
+  const [cards, setCards] = useState(
+    [] as Array<{ label: string; value: number; suffix: string; benchmark: string; status: "Healthy" | "Caution" | "Risk" }>
+  );
+
+  useEffect(() => {
+    const rev = toNum(revenue);
+    const gp = toNum(grossProfit);
+    const ebitdaVal = toNum(ebitda);
+    const ebitVal = toNum(ebit);
+    const net = toNum(netIncome);
+    const assets = toNum(totalAssets);
+    const equity = toNum(totalEquity);
+    const ce = toNum(capitalEmployed);
+
+    const safePct = (num: number, den: number) => (den > 0 ? (num / den) * 100 : 0);
+    const safeMul = (num: number, den: number) => (den > 0 ? num / den : 0);
+
+    const baseRatios = [
+      { label: "Gross Profit Margin", value: safePct(gp, rev), suffix: "%", benchmark: "Healthy > 20%", healthy: 20 },
+      { label: "EBITDA Margin", value: safePct(ebitdaVal, rev), suffix: "%", benchmark: "Healthy > 15%", healthy: 15 },
+      { label: "EBIT Margin", value: safePct(ebitVal, rev), suffix: "%", benchmark: "Healthy > 12%", healthy: 12 },
+      { label: "Net Profit Margin", value: safePct(net, rev), suffix: "%", benchmark: "Healthy > 10%", healthy: 10 },
+      { label: "ROA", value: safePct(net, assets), suffix: "%", benchmark: "Healthy > 5%", healthy: 5 },
+      { label: "ROE", value: safePct(net, equity), suffix: "%", benchmark: "Healthy > 15%", healthy: 15 },
+      { label: "ROCE", value: safePct(ebitVal, ce), suffix: "%", benchmark: "Healthy > 12%", healthy: 12 },
+      { label: "Asset Turnover", value: safeMul(rev, assets), suffix: "x", benchmark: "Healthy > 1.00x", healthy: 1 },
+    ];
+
+    const ratios: Array<{ label: string; value: number; suffix: string; benchmark: string; status: "Healthy" | "Caution" | "Risk" }> = baseRatios.map((row) => {
+      const status: "Healthy" | "Caution" | "Risk" = row.value > row.healthy
+        ? "Healthy"
+        : row.value > row.healthy * 0.7
+          ? "Caution"
+          : "Risk";
+      return { label: row.label, value: row.value, suffix: row.suffix, benchmark: row.benchmark, status };
+    });
+
+    setCards(ratios);
+  }, [revenue, grossProfit, ebitda, ebit, netIncome, totalAssets, totalEquity, capitalEmployed]);
+
+  return (
+    <CalculatorShell
+      title="Profitability Ratios Dashboard"
+      subtitle="Margins, returns and turnover in one view"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Revenue" value={revenue} onChange={setRevenue} />
+          <MoneyInput label="Gross Profit" value={grossProfit} onChange={setGrossProfit} />
+          <MoneyInput label="EBITDA" value={ebitda} onChange={setEbitda} />
+          <MoneyInput label="EBIT" value={ebit} onChange={setEbit} />
+          <MoneyInput label="Net Income" value={netIncome} onChange={setNetIncome} />
+          <MoneyInput label="Total Assets" value={totalAssets} onChange={setTotalAssets} />
+          <MoneyInput label="Total Equity" value={totalEquity} onChange={setTotalEquity} />
+          <MoneyInput label="Capital Employed" value={capitalEmployed} onChange={setCapitalEmployed} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {cards.map((card) => (
+            <div key={card.label} className="card-surface p-4 space-y-2">
+              <div className="text-xs uppercase tracking-wide text-tertiary">{card.label}</div>
+              <div className="text-xl font-bold text-gradient-orange">
+                {card.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}{card.suffix}
+              </div>
+              <div className="text-[11px] text-secondary">{card.benchmark}</div>
+              <span className={cn(
+                "inline-flex px-2 py-0.5 rounded-pill text-[10px] font-semibold border",
+                card.status === "Healthy"
+                  ? "text-success border-success/40 bg-success/10"
+                  : card.status === "Caution"
+                    ? "text-warning border-warning/40 bg-warning/10"
+                    : "text-red-400 border-red-400/40 bg-red-400/10"
+              )}>
+                {card.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    />
+  );
+}
+
+function RentVsBuyCalc() {
+  const [propertyPrice, setPropertyPrice] = useState("9000000");
+  const [downPaymentPercent, setDownPaymentPercent] = useState("20");
+  const [mortgageRate, setMortgageRate] = useState("8.5");
+  const [tenureYears, setTenureYears] = useState("20");
+  const [monthlyRent, setMonthlyRent] = useState("35000");
+  const [rentIncreasePercent, setRentIncreasePercent] = useState("7");
+  const [propertyAppreciationPercent, setPropertyAppreciationPercent] = useState("6");
+  const [maintenancePercent, setMaintenancePercent] = useState("1");
+  const [investmentReturnPercent, setInvestmentReturnPercent] = useState("10");
+  const [result, setResult] = useState({
+    totalBuyingCost: 0,
+    totalRentCost: 0,
+    recommendation: "",
+    breakEvenYear: 0,
+    comparison: [] as Array<{ year: number; cumulativeRent: number; netBuyingCost: number; difference: number }>,
+  });
+
+  useEffect(() => {
+    const price = toNum(propertyPrice);
+    const dpPct = toNum(downPaymentPercent);
+    const loanRate = toNum(mortgageRate);
+    const years = Math.max(1, Math.floor(toNum(tenureYears)));
+    const rent = toNum(monthlyRent);
+    const rentInc = toNum(rentIncreasePercent);
+    const app = toNum(propertyAppreciationPercent);
+    const maintPct = toNum(maintenancePercent);
+    const investRet = toNum(investmentReturnPercent);
+
+    const downPayment = price * dpPct / 100;
+    const loanAmount = Math.max(0, price - downPayment);
+    const months = years * 12;
+    const emi = calculateEMIFromPrincipal(loanAmount, loanRate, months);
+    const totalMortgageCost = emi * months + downPayment;
+    const totalInterest = Math.max(0, totalMortgageCost - price);
+    const annualMaintenance = price * maintPct / 100;
+    const totalBuyingCost = downPayment + totalInterest + annualMaintenance * years;
+
+    let totalRentCost = 0;
+    for (let y = 0; y < years; y += 1) {
+      totalRentCost += rent * 12 * (1 + rentInc / 100) ** y;
+    }
+
+    const opportunityCost = downPayment * (1 + investRet / 100) ** years;
+    const finalPropertyValue = price * (1 + app / 100) ** years;
+    const netCostBuying = totalBuyingCost - (finalPropertyValue - price);
+    const recommendation = netCostBuying <= totalRentCost
+      ? "Buying is financially favorable over the selected horizon."
+      : "Renting appears cheaper over the selected horizon.";
+
+    let cumulativeRent = 0;
+    const firstTen = Math.min(10, years);
+    const comparison: Array<{ year: number; cumulativeRent: number; netBuyingCost: number; difference: number }> = [];
+    let breakEvenYear = 0;
+
+    for (let y = 1; y <= firstTen; y += 1) {
+      cumulativeRent += rent * 12 * (1 + rentInc / 100) ** (y - 1);
+      const cumulativeBuyOutflow = downPayment + emi * 12 * y + annualMaintenance * y;
+      const propertyGain = price * ((1 + app / 100) ** y - 1);
+      const netBuyingCost = cumulativeBuyOutflow - propertyGain;
+      const difference = cumulativeRent - netBuyingCost;
+      if (breakEvenYear === 0 && difference >= 0) breakEvenYear = y;
+      comparison.push({ year: y, cumulativeRent, netBuyingCost, difference });
+    }
+
+    setResult({
+      totalBuyingCost: totalBuyingCost + (opportunityCost - downPayment),
+      totalRentCost,
+      recommendation,
+      breakEvenYear,
+      comparison,
+    });
+  }, [
+    propertyPrice,
+    downPaymentPercent,
+    mortgageRate,
+    tenureYears,
+    monthlyRent,
+    rentIncreasePercent,
+    propertyAppreciationPercent,
+    maintenancePercent,
+    investmentReturnPercent,
+  ]);
+
+  return (
+    <CalculatorShell
+      title="Rent vs Buy Analysis"
+      subtitle="Compare ownership economics with rent escalation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Property Price" value={propertyPrice} onChange={setPropertyPrice} />
+          <NumberInput label="Down Payment (%)" value={downPaymentPercent} onChange={setDownPaymentPercent} />
+          <NumberInput label="Mortgage Rate (%)" value={mortgageRate} onChange={setMortgageRate} />
+          <NumberInput label="Tenure (Years)" value={tenureYears} onChange={setTenureYears} />
+          <MoneyInput label="Monthly Rent" value={monthlyRent} onChange={setMonthlyRent} />
+          <NumberInput label="Rent Increase (%)" value={rentIncreasePercent} onChange={setRentIncreasePercent} />
+          <NumberInput label="Property Appreciation (%)" value={propertyAppreciationPercent} onChange={setPropertyAppreciationPercent} />
+          <NumberInput label="Maintenance (%)" value={maintenancePercent} onChange={setMaintenancePercent} />
+          <NumberInput label="Investment Return (%)" value={investmentReturnPercent} onChange={setInvestmentReturnPercent} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total Buying Cost" value={formatINR(result.totalBuyingCost)} />
+            <MiniStat label="Total Rent Cost" value={formatINR(result.totalRentCost)} />
+            <MiniStat
+              label="Break-even Year"
+              value={result.breakEvenYear > 0 ? result.breakEvenYear.toLocaleString("en-IN") : "Not within 10 yrs"}
+              green={result.breakEvenYear > 0}
+            />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            {result.recommendation}
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Year-by-Year Comparison (First 10 Years)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Cumulative Rent</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Net Buying Cost</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Rent - Buy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.comparison.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.cumulativeRent)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.netBuyingCost)}</td>
+                      <td className={cn("px-5 py-2 text-right font-medium", row.difference >= 0 ? "text-success" : "text-red-400")}>
+                        {`₹ ${row.difference.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function HUFTaxCalc() {
+  type Member = { name: string; income: string };
+
+  const [hufIncome, setHufIncome] = useState("1800000");
+  const [regime, setRegime] = useState<"new" | "old">("new");
+  const [memberIncomes, setMemberIncomes] = useState<Member[]>([
+    { name: "Member 1", income: "600000" },
+    { name: "Member 2", income: "450000" },
+  ]);
+  const [result, setResult] = useState({
+    hufTax: 0,
+    effectiveRate: 0,
+    individualTax: 0,
+    taxSaving: 0,
+    memberRows: [] as Array<{ name: string; baseIncome: number; withShareIncome: number; tax: number }>,
+  });
+
+  useEffect(() => {
+    const income = toNum(hufIncome);
+    const selectedSlabs = regime === "new" ? NEW_REGIME_SLABS : OLD_REGIME_SLABS;
+    const hufDeduction80C = regime === "old" ? Math.min(150000, income) : 0;
+    const hufTaxable = Math.max(0, income - hufDeduction80C);
+    const hufBaseTax = calculateSlabTax(hufTaxable, selectedSlabs).baseTax;
+    const hufTax = hufBaseTax * 1.04;
+
+    const validMembers = memberIncomes.filter((m) => m.name.trim() && toNum(m.income) > 0);
+    const memberCount = validMembers.length || 1;
+    const sharedIncome = income / memberCount;
+
+    const memberRows = validMembers.map((member) => {
+      const baseIncome = toNum(member.income);
+      const taxable = Math.max(0, baseIncome + sharedIncome);
+      const memberTax = calculateSlabTax(taxable, selectedSlabs).baseTax * 1.04;
+      return {
+        name: member.name,
+        baseIncome,
+        withShareIncome: taxable,
+        tax: memberTax,
+      };
+    });
+
+    const individualTax = memberRows.reduce((sum, row) => sum + row.tax, 0);
+    const taxSaving = Math.max(0, individualTax - hufTax);
+    const effectiveRate = income > 0 ? (hufTax / income) * 100 : 0;
+
+    setResult({ hufTax, effectiveRate, individualTax, taxSaving, memberRows });
+  }, [hufIncome, regime, memberIncomes]);
+
+  const updateMember = (index: number, key: keyof Member, value: string) => {
+    setMemberIncomes((prev) => prev.map((m, i) => (i === index ? { ...m, [key]: value } : m)));
+  };
+
+  const addMember = () => {
+    setMemberIncomes((prev) => (prev.length >= 5 ? prev : [...prev, { name: `Member ${prev.length + 1}`, income: "0" }]));
+  };
+
+  return (
+    <CalculatorShell
+      title="HUF Tax Calculator"
+      subtitle="Compare HUF taxation vs income taxed in individual hands"
+      inputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-6 space-y-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">HUF Inputs</h2>
+            <MoneyInput label="HUF Income" value={hufIncome} onChange={setHufIncome} />
+            <Field label="Regime">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+                {(["new", "old"] as const).map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setRegime(item)}
+                    className={cn(
+                      "py-2 text-xs font-medium rounded-md transition-all uppercase",
+                      regime === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                    )}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <div className="text-xs text-tertiary border-t border-white/10 pt-3">
+              HUF deduction considered: Section 80C up to ₹1.5L in old regime.
+            </div>
+          </div>
+
+          <div className="card-surface p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Member Incomes (Max 5)</h2>
+              <button
+                onClick={addMember}
+                className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white"
+              >
+                Add Member
+              </button>
+            </div>
+            {memberIncomes.map((member, index) => (
+              <div key={`${member.name}-${index}`} className="grid grid-cols-[1fr_140px] gap-2">
+                <input
+                  value={member.name}
+                  onChange={(e) => updateMember(index, "name", e.target.value)}
+                  className="glass-input h-10 px-3 text-sm"
+                  placeholder="Member name"
+                />
+                <input
+                  value={member.income}
+                  inputMode="numeric"
+                  onChange={(e) => updateMember(index, "income", e.target.value.replace(/[^0-9]/g, ""))}
+                  className="glass-input h-10 px-3 text-sm text-right"
+                  placeholder="Income"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="HUF Tax" value={formatINR(result.hufTax)} />
+            <MiniStat label="Effective Rate" value={formatPct(result.effectiveRate)} />
+            <MiniStat label="If Taxed in Individual Hands" value={formatINR(result.individualTax)} />
+            <MiniStat label="Tax Saving via HUF" value={formatINR(result.taxSaving)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Member Comparison</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Member</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Base Income</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Income + Share</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.memberRows.map((row, index) => (
+                    <tr key={row.name + index} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.name}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.baseIncome)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.withShareIncome)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.tax)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function Form16Calc() {
+  const [employerName, setEmployerName] = useState("ABC Private Limited");
+  const [tan, setTan] = useState("BLRA12345A");
+  const [pan, setPan] = useState("ABCDE1234F");
+  const [grossSalary, setGrossSalary] = useState("1800000");
+  const [allowances, setAllowances] = useState("240000");
+  const [perquisites, setPerquisites] = useState("60000");
+  const [hraExemption, setHraExemption] = useState("120000");
+  const [ltaExemption, setLtaExemption] = useState("30000");
+  const [otherExemption, setOtherExemption] = useState("15000");
+  const [ded80c, setDed80c] = useState("150000");
+  const [ded80d, setDed80d] = useState("25000");
+  const [ded80ccd1b, setDed80ccd1b] = useState("50000");
+  const [otherDeduction, setOtherDeduction] = useState("0");
+  const [result, setResult] = useState({
+    grossIncome: 0,
+    exemptIncome: 0,
+    netSalary: 0,
+    deductions: 0,
+    taxableIncome: 0,
+    tax: 0,
+    cess: 0,
+    totalTax: 0,
+  });
+
+  useEffect(() => {
+    const gross = toNum(grossSalary);
+    const allow = toNum(allowances);
+    const perq = toNum(perquisites);
+
+    const grossIncome = gross + allow + perq;
+    const hra = Math.min(toNum(hraExemption), grossIncome);
+    const lta = Math.min(toNum(ltaExemption), grossIncome);
+    const otherEx = Math.min(toNum(otherExemption), grossIncome);
+    const exemptIncome = Math.min(grossIncome, hra + lta + otherEx);
+
+    const standardDeduction = 75000;
+    const d80c = Math.min(toNum(ded80c), 150000);
+    const d80d = Math.min(toNum(ded80d), 25000);
+    const d80ccd = Math.min(toNum(ded80ccd1b), 50000);
+    const otherDed = toNum(otherDeduction);
+    const deductions = d80c + d80d + d80ccd + otherDed;
+
+    const netSalary = Math.max(0, grossIncome - exemptIncome);
+    const taxableIncome = Math.max(0, netSalary - standardDeduction - deductions);
+    const tax = calculateSlabTax(taxableIncome, NEW_REGIME_SLABS).baseTax;
+    const cess = tax * 0.04;
+    const totalTax = tax + cess;
+
+    setResult({ grossIncome, exemptIncome, netSalary, deductions, taxableIncome, tax, cess, totalTax });
+  }, [
+    grossSalary,
+    allowances,
+    perquisites,
+    hraExemption,
+    ltaExemption,
+    otherExemption,
+    ded80c,
+    ded80d,
+    ded80ccd1b,
+    otherDeduction,
+  ]);
+
+  const rows = [
+    { label: "Gross Salary (incl. Allowances & Perquisites)", value: result.grossIncome },
+    { label: "Less: Exemptions (HRA + LTA + Other)", value: -result.exemptIncome },
+    { label: "Net Salary", value: result.netSalary },
+    { label: "Less: Standard Deduction", value: -75000 },
+    { label: "Less: Chapter VI-A Deductions", value: -result.deductions },
+    { label: "Taxable Income", value: result.taxableIncome },
+    { label: "Income Tax (New Regime)", value: result.tax },
+    { label: "Health & Education Cess @4%", value: result.cess },
+    { label: "Total Tax Liability", value: result.totalTax },
+  ];
+
+  return (
+    <CalculatorShell
+      title="Form 16 / Salary Tax Computation"
+      subtitle="Formal Part B style salary tax computation"
+      inputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Part A: Employer Details</h2>
+            <Field label="Employer Name">
+              <input value={employerName} onChange={(e) => setEmployerName(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" />
+            </Field>
+            <Field label="TAN">
+              <input value={tan} onChange={(e) => setTan(e.target.value.toUpperCase())} className="glass-input w-full h-11 px-3 text-sm" />
+            </Field>
+            <Field label="PAN">
+              <input value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} className="glass-input w-full h-11 px-3 text-sm" />
+            </Field>
+          </div>
+
+          <div className="card-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Part B: Income / Exemptions / Deductions</h2>
+            <MoneyInput label="Gross Salary" value={grossSalary} onChange={setGrossSalary} />
+            <MoneyInput label="Allowances" value={allowances} onChange={setAllowances} />
+            <MoneyInput label="Perquisites" value={perquisites} onChange={setPerquisites} />
+            <MoneyInput label="HRA Exemption" value={hraExemption} onChange={setHraExemption} />
+            <MoneyInput label="LTA Exemption" value={ltaExemption} onChange={setLtaExemption} />
+            <MoneyInput label="Other Exemption" value={otherExemption} onChange={setOtherExemption} />
+            <MoneyInput label="Deduction 80C" value={ded80c} onChange={setDed80c} />
+            <MoneyInput label="Deduction 80D" value={ded80d} onChange={setDed80d} />
+            <MoneyInput label="Deduction 80CCD(1B)" value={ded80ccd1b} onChange={setDed80ccd1b} />
+            <MoneyInput label="Other Deductions" value={otherDeduction} onChange={setOtherDeduction} />
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-4 text-xs text-secondary">
+            Employer: <span className="text-white font-medium">{employerName}</span> | TAN: <span className="text-white font-medium">{tan}</span> | PAN: <span className="text-white font-medium">{pan}</span>
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Form 16 Part B Computation</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={row.label} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.label}</td>
+                      <td className="px-5 py-2 text-right font-medium">
+                        {row.value < 0 ? `- ${formatINR(Math.abs(row.value))}` : formatINR(row.value)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function TDSSalaryCalc() {
+  const [monthlyBasic, setMonthlyBasic] = useState("70000");
+  const [monthlyHRA, setMonthlyHRA] = useState("30000");
+  const [otherAllowances, setOtherAllowances] = useState("20000");
+  const [employerPF, setEmployerPF] = useState("8400");
+  const [rentPaid, setRentPaid] = useState("28000");
+  const [cityType, setCityType] = useState<"metro" | "non-metro">("metro");
+  const [investments80C, setInvestments80C] = useState("150000");
+  const [insurance80D, setInsurance80D] = useState("25000");
+  const [nps80CCD, setNps80CCD] = useState("50000");
+  const [result, setResult] = useState({
+    annualTaxableIncome: 0,
+    totalAnnualTax: 0,
+    monthlyTDS: 0,
+    effectiveMonthlyTakeHome: 0,
+    monthlyRows: [] as Array<{ month: string; tds: number }>,
+  });
+
+  useEffect(() => {
+    const basic = toNum(monthlyBasic);
+    const hra = toNum(monthlyHRA);
+    const other = toNum(otherAllowances);
+    const pf = toNum(employerPF);
+    const rent = toNum(rentPaid);
+
+    const annualBasic = basic * 12;
+    const annualHRA = hra * 12;
+    const annualOther = other * 12;
+    const annualPF = pf * 12;
+    const annualRent = rent * 12;
+
+    const hraLimitByCity = annualBasic * (cityType === "metro" ? 0.5 : 0.4);
+    const rentMinus10pctBasic = Math.max(0, annualRent - annualBasic * 0.1);
+    const hraExempt = Math.max(0, Math.min(annualHRA, hraLimitByCity, rentMinus10pctBasic));
+
+    const grossAnnual = annualBasic + annualHRA + annualOther + annualPF;
+    const deductions = Math.min(toNum(investments80C), 150000) + Math.min(toNum(insurance80D), 25000) + Math.min(toNum(nps80CCD), 50000) + 75000;
+    const annualTaxableIncome = Math.max(0, grossAnnual - hraExempt - deductions);
+
+    const tax = calculateSlabTax(annualTaxableIncome, NEW_REGIME_SLABS).baseTax;
+    const totalAnnualTax = tax * 1.04;
+    const monthlyTDS = Math.max(0, totalAnnualTax / 12);
+    const effectiveMonthlyTakeHome = basic + hra + other - monthlyTDS;
+
+    const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    const monthlyRows = months.map((month) => ({ month, tds: monthlyTDS }));
+
+    setResult({ annualTaxableIncome, totalAnnualTax, monthlyTDS, effectiveMonthlyTakeHome, monthlyRows });
+  }, [monthlyBasic, monthlyHRA, otherAllowances, employerPF, rentPaid, cityType, investments80C, insurance80D, nps80CCD]);
+
+  return (
+    <CalculatorShell
+      title="TDS on Salary Calculator (Section 192)"
+      subtitle="Annual tax estimation and equal monthly TDS projection"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Monthly Basic" value={monthlyBasic} onChange={setMonthlyBasic} />
+          <MoneyInput label="Monthly HRA" value={monthlyHRA} onChange={setMonthlyHRA} />
+          <MoneyInput label="Other Allowances" value={otherAllowances} onChange={setOtherAllowances} />
+          <MoneyInput label="Employer PF" value={employerPF} onChange={setEmployerPF} />
+          <MoneyInput label="Rent Paid" value={rentPaid} onChange={setRentPaid} />
+
+          <Field label="City Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["metro", "non-metro"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setCityType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all capitalize",
+                    cityType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <MoneyInput label="Investments 80C" value={investments80C} onChange={setInvestments80C} />
+          <MoneyInput label="Insurance 80D" value={insurance80D} onChange={setInsurance80D} />
+          <MoneyInput label="NPS 80CCD" value={nps80CCD} onChange={setNps80CCD} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Annual Taxable Income" value={formatINR(result.annualTaxableIncome)} />
+            <MiniStat label="Total Annual Tax" value={formatINR(result.totalAnnualTax)} />
+            <MiniStat label="Monthly TDS" value={formatINR(result.monthlyTDS)} />
+            <MiniStat label="Effective Monthly Take Home" value={formatINR(result.effectiveMonthlyTakeHome)} green />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Month-wise TDS Schedule</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Month</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">TDS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.monthlyRows.map((row, index) => (
+                    <tr key={row.month} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.month}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.tds)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            TDS adjusted in Dec/Jan if investments not submitted.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function GSTCompositionCalc() {
+  const [businessType, setBusinessType] = useState<"Manufacturer" | "Trader" | "Restaurant" | "Service">("Manufacturer");
+  const [annualTurnover, setAnnualTurnover] = useState("12000000");
+  const [quarterlyTurnover, setQuarterlyTurnover] = useState("3000000");
+  const [result, setResult] = useState({
+    compositionTaxAnnual: 0,
+    compositionTaxQuarterly: 0,
+    regularGSTEstimate: 0,
+    potentialSaving: 0,
+    eligibilityStatus: "",
+    cgstShare: 0,
+    sgstShare: 0,
+  });
+
+  useEffect(() => {
+    const annual = toNum(annualTurnover);
+    const quarterly = toNum(quarterlyTurnover);
+
+    const compositionRateMap = {
+      Manufacturer: 1,
+      Trader: 1,
+      Restaurant: 5,
+      Service: 6,
+    } as const;
+
+    const regularRateMap = {
+      Manufacturer: 12,
+      Trader: 12,
+      Restaurant: 18,
+      Service: 18,
+    } as const;
+
+    const rate = compositionRateMap[businessType];
+    const annualTax = annual * rate / 100;
+    const quarterTax = quarterly * rate / 100;
+    const regularGSTEstimate = annual * regularRateMap[businessType] / 100;
+    const potentialSaving = Math.max(0, regularGSTEstimate - annualTax);
+    const eligibilityStatus = annual <= 15000000 ? "Eligible under ₹1.5 Cr limit" : "Not eligible (turnover above ₹1.5 Cr)";
+
+    setResult({
+      compositionTaxAnnual: annualTax,
+      compositionTaxQuarterly: quarterTax,
+      regularGSTEstimate,
+      potentialSaving,
+      eligibilityStatus,
+      cgstShare: annualTax / 2,
+      sgstShare: annualTax / 2,
+    });
+  }, [businessType, annualTurnover, quarterlyTurnover]);
+
+  return (
+    <CalculatorShell
+      title="GST Composition Scheme Calculator"
+      subtitle="Composition liability vs regular GST estimate"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <Field label="Business Type">
+            <div className="grid grid-cols-2 gap-2">
+              {(["Manufacturer", "Trader", "Restaurant", "Service"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setBusinessType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md border transition-all",
+                    businessType === item
+                      ? "bg-gradient-orange text-white glow-orange border-transparent"
+                      : "text-secondary border-white/10 hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <MoneyInput label="Annual Turnover" value={annualTurnover} onChange={setAnnualTurnover} />
+          <MoneyInput label="Quarterly Turnover" value={quarterlyTurnover} onChange={setQuarterlyTurnover} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Composition Tax (Annual)" value={formatINR(result.compositionTaxAnnual)} />
+            <MiniStat label="Composition Tax (Quarterly)" value={formatINR(result.compositionTaxQuarterly)} />
+            <MiniStat label="Regular GST Estimate" value={formatINR(result.regularGSTEstimate)} />
+            <MiniStat label="Potential Saving" value={formatINR(result.potentialSaving)} green />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Eligibility: <span className="text-white font-medium">{result.eligibilityStatus}</span>. Lower threshold of ₹75L may apply in some states.
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Cannot claim ITC under composition scheme.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ExportGSTCalc() {
+  const [exportValue, setExportValue] = useState("5000000");
+  const [exportType, setExportType] = useState<"Goods" | "Services">("Goods");
+  const [hasLUT, setHasLUT] = useState(true);
+  const [igstPaidOnInputs, setIgstPaidOnInputs] = useState("300000");
+  const [refundType, setRefundType] = useState<"Refund of IGST" | "ITC Refund">("ITC Refund");
+  const [result, setResult] = useState({
+    exportValue: 0,
+    igstLiability: 0,
+    refundAmount: 0,
+  });
+
+  useEffect(() => {
+    const value = toNum(exportValue);
+    const itc = toNum(igstPaidOnInputs);
+    const igstOnExport = hasLUT ? 0 : value * 0.18;
+    const refundAmount = hasLUT ? itc : igstOnExport;
+
+    setResult({
+      exportValue: value,
+      igstLiability: igstOnExport,
+      refundAmount,
+    });
+  }, [exportValue, hasLUT, igstPaidOnInputs, refundType, exportType]);
+
+  return (
+    <CalculatorShell
+      title="GST on Exports Calculator"
+      subtitle="Zero-rated export treatment with LUT and refund paths"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Export Value" value={exportValue} onChange={setExportValue} />
+
+          <Field label="Export Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Goods", "Services"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setExportType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    exportType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Has LUT">
+            <button
+              onClick={() => setHasLUT((v) => !v)}
+              className={cn(
+                "w-full py-2 text-sm font-medium rounded-md transition-all border",
+                hasLUT
+                  ? "bg-gradient-orange text-white glow-orange border-transparent"
+                  : "text-secondary border-white/10 hover:text-white"
+              )}
+            >
+              {hasLUT ? "Yes" : "No"}
+            </button>
+          </Field>
+
+          <MoneyInput label="IGST Paid on Inputs" value={igstPaidOnInputs} onChange={setIgstPaidOnInputs} />
+
+          <Field label="Refund Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Refund of IGST", "ITC Refund"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setRefundType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    refundType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Export Value" value={formatINR(result.exportValue)} />
+            <MiniStat label="IGST Liability" value={formatINR(result.igstLiability)} />
+            <MiniStat label="Refund Amount" value={formatINR(result.refundAmount)} green />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Filing LUT is recommended to avoid cash flow blockage.
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Reporting: GSTR-1 required. Refund application through Form RFD-01.
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Typical timeline: Refund processed within 60 days.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function MISCalc() {
+  const [investmentAmount, setInvestmentAmount] = useState("900000");
+  const [accountType, setAccountType] = useState<"Single" | "Joint">("Single");
+  const [result, setResult] = useState({
+    monthlyPayout: 0,
+    totalInterestEarned: 0,
+    maturityAmount: 0,
+    fdMaturity: 0,
+    sipFutureValue: 0,
+  });
+
+  useEffect(() => {
+    const maxLimit = accountType === "Single" ? 900000 : 1500000;
+    const principal = Math.min(toNum(investmentAmount), maxLimit);
+    const monthlyPayout = principal * 7.4 / 100 / 12;
+    const totalInterestEarned = monthlyPayout * 60;
+    const maturityAmount = principal;
+
+    const fdMaturity = principal * (1 + 0.07 / 4) ** (4 * 5);
+    const monthlySip = principal / 60;
+    const r = 0.12 / 12;
+    const sipFutureValue = r > 0 ? monthlySip * (((1 + r) ** 60 - 1) / r) * (1 + r) : monthlySip * 60;
+
+    setResult({ monthlyPayout, totalInterestEarned, maturityAmount, fdMaturity, sipFutureValue });
+  }, [investmentAmount, accountType]);
+
+  return (
+    <CalculatorShell
+      title="Post Office MIS Calculator"
+      subtitle="Fixed monthly income with principal returned after 5 years"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput
+            label={accountType === "Single" ? "Investment Amount (Max ₹9L)" : "Investment Amount (Max ₹15L)"}
+            value={investmentAmount}
+            onChange={setInvestmentAmount}
+          />
+          <Field label="Account Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Single", "Joint"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setAccountType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    accountType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Tenure">
+            <input value="5 years (fixed)" disabled className="glass-input w-full h-11 px-3 text-sm opacity-80" />
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Monthly Payout" value={formatINR(result.monthlyPayout)} green />
+            <MiniStat label="Total Interest Earned" value={formatINR(result.totalInterestEarned)} />
+            <MiniStat label="Maturity Amount (Principal)" value={formatINR(result.maturityAmount)} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">FD at 7% (5Y)</div>
+              <div className="mt-2 text-xl font-bold text-gradient-orange">{formatINR(result.fdMaturity)}</div>
+            </div>
+            <div className="card-surface p-4">
+              <div className="text-xs uppercase tracking-wide text-tertiary">SIP at 12% (same total outlay)</div>
+              <div className="mt-2 text-xl font-bold text-gradient-orange">{formatINR(result.sipFutureValue)}</div>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            No compounding in MIS, fixed monthly payout. Interest is taxable. TDS applicable if interest &gt; ₹40,000/year.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SSYCalc() {
+  const [annualDeposit, setAnnualDeposit] = useState("150000");
+  const [girlAge, setGirlAge] = useState("2");
+  const [startYear, setStartYear] = useState(String(new Date().getFullYear()));
+  const [result, setResult] = useState({
+    maturityAmount: 0,
+    totalDeposited: 0,
+    totalInterest: 0,
+    maturityYear: 0,
+    girlAgeAtMaturity: 0,
+    rows: [] as Array<{ year: number; age: number; deposit: number; interest: number; closingBalance: number }>,
+  });
+
+  useEffect(() => {
+    const deposit = Math.min(150000, Math.max(250, toNum(annualDeposit)));
+    const age = Math.min(10, Math.max(0, Math.floor(toNum(girlAge))));
+    const openYear = Math.floor(toNum(startYear));
+    const rate = 0.082;
+
+    let balance = 0;
+    let totalDeposited = 0;
+    const rows: Array<{ year: number; age: number; deposit: number; interest: number; closingBalance: number }> = [];
+
+    for (let i = 1; i <= 21; i += 1) {
+      const depositThisYear = i <= 15 ? deposit : 0;
+      const openingWithDeposit = balance + depositThisYear;
+      const interest = openingWithDeposit * rate;
+      balance = openingWithDeposit + interest;
+      totalDeposited += depositThisYear;
+      rows.push({
+        year: openYear + i - 1,
+        age: age + i,
+        deposit: depositThisYear,
+        interest,
+        closingBalance: balance,
+      });
+    }
+
+    const maturityAmount = balance;
+    const totalInterest = maturityAmount - totalDeposited;
+    const maturityYear = openYear + 20;
+    const girlAgeAtMaturity = age + 21;
+
+    setResult({ maturityAmount, totalDeposited, totalInterest, maturityYear, girlAgeAtMaturity, rows });
+  }, [annualDeposit, girlAge, startYear]);
+
+  return (
+    <CalculatorShell
+      title="Sukanya Samriddhi Yojana Calculator"
+      subtitle="15-year deposit period with maturity at 21 years"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Annual Deposit (₹250 to ₹1.5L)" value={annualDeposit} onChange={setAnnualDeposit} />
+          <NumberInput label="Girl Age (0-10)" value={girlAge} onChange={setGirlAge} />
+          <NumberInput label="Start Year" value={startYear} onChange={setStartYear} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Maturity Amount" value={formatINR(result.maturityAmount)} green />
+            <MiniStat label="Total Deposited" value={formatINR(result.totalDeposited)} />
+            <MiniStat label="Total Interest" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Maturity Year" value={result.maturityYear.toLocaleString("en-IN")} />
+            <MiniStat label="Girl Age At Maturity" value={result.girlAgeAtMaturity.toLocaleString("en-IN")} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Year-wise SSY Projection</div>
+            <div className="overflow-x-auto -mx-5 max-h-72">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary sticky top-0">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Age</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Deposit</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Interest</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Closing Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{row.age.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.deposit)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.interest)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.closingBalance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Fully exempt under EEE — deposit, interest and maturity all tax-free.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function NPSCalc() {
+  const [monthlyContribution, setMonthlyContribution] = useState("10000");
+  const [currentAge, setCurrentAge] = useState("30");
+  const [retirementAge, setRetirementAge] = useState("60");
+  const [expectedReturn, setExpectedReturn] = useState("10");
+  const [annuityRate, setAnnuityRate] = useState("6");
+  const [result, setResult] = useState({
+    corpusAtRetirement: 0,
+    lumpsum: 0,
+    annuityAmount: 0,
+    estimatedMonthlyPension: 0,
+    totalInvested: 0,
+    wealthGained: 0,
+    taxBenefit80CCD: 0,
+  });
+
+  useEffect(() => {
+    const monthly = toNum(monthlyContribution);
+    const ageNow = Math.floor(toNum(currentAge));
+    const retireAge = Math.max(ageNow + 1, Math.floor(toNum(retirementAge)));
+    const years = Math.max(0, retireAge - ageNow);
+    const annualReturn = toNum(expectedReturn);
+    const annRate = toNum(annuityRate);
+
+    const n = years * 12;
+    const r = annualReturn / 12 / 100;
+    const corpusAtRetirement = r === 0
+      ? monthly * n
+      : monthly * (((1 + r) ** n - 1) / r) * (1 + r);
+
+    const mandatoryAnnuity = corpusAtRetirement * 0.4;
+    const lumpsum = corpusAtRetirement * 0.6;
+    const estimatedMonthlyPension = mandatoryAnnuity * annRate / 100 / 12;
+    const totalInvested = monthly * n;
+    const wealthGained = Math.max(0, corpusAtRetirement - totalInvested);
+
+    const yearlyContribution = monthly * 12;
+    const taxEligible = Math.min(yearlyContribution, 50000);
+    const taxBenefit80CCD = taxEligible * 0.3;
+
+    setResult({
+      corpusAtRetirement,
+      lumpsum,
+      annuityAmount: mandatoryAnnuity,
+      estimatedMonthlyPension,
+      totalInvested,
+      wealthGained,
+      taxBenefit80CCD,
+    });
+  }, [monthlyContribution, currentAge, retirementAge, expectedReturn, annuityRate]);
+
+  return (
+    <CalculatorShell
+      title="NPS (National Pension System) Calculator"
+      subtitle="Retirement corpus, mandatory annuity and pension estimate"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Monthly Contribution" value={monthlyContribution} onChange={setMonthlyContribution} />
+          <NumberInput label="Current Age" value={currentAge} onChange={setCurrentAge} />
+          <NumberInput label="Retirement Age" value={retirementAge} onChange={setRetirementAge} />
+          <NumberInput label="Expected Return (%)" value={expectedReturn} onChange={setExpectedReturn} />
+          <NumberInput label="Annuity Rate (%)" value={annuityRate} onChange={setAnnuityRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Corpus At Retirement" value={formatINR(result.corpusAtRetirement)} green />
+            <MiniStat label="Lumpsum (60%)" value={formatINR(result.lumpsum)} />
+            <MiniStat label="Annuity Amount (40%)" value={formatINR(result.annuityAmount)} />
+            <MiniStat label="Estimated Monthly Pension" value={formatINR(result.estimatedMonthlyPension)} />
+            <MiniStat label="Total Invested" value={formatINR(result.totalInvested)} />
+            <MiniStat label="Wealth Gained" value={formatINR(result.wealthGained)} />
+            <MiniStat label="Tax Benefit 80CCD (30% slab)" value={formatINR(result.taxBenefit80CCD)} green />
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SCFDCalc() {
+  const [principal, setPrincipal] = useState("1000000");
+  const [tenureMonths, setTenureMonths] = useState("36");
+  const [bankName, setBankName] = useState<"SBI" | "HDFC" | "ICICI" | "Post Office TD" | "Small Finance Banks">("SBI");
+  const [isSeniorCitizen, setIsSeniorCitizen] = useState(true);
+  const [result, setResult] = useState({
+    maturityAmount: 0,
+    totalInterest: 0,
+    effectiveYield: 0,
+    tdsDeductible: 0,
+    netInterest: 0,
+    comparisons: [] as Array<{ bank: string; rate: number; maturity: number; interest: number }>,
+  });
+
+  useEffect(() => {
+    const p = toNum(principal);
+    const months = Math.max(1, Math.floor(toNum(tenureMonths)));
+    const years = months / 12;
+
+    const rates = {
+      SBI: { regular: 6.5, senior: 7.0 },
+      HDFC: { regular: 7.0, senior: 7.5 },
+      ICICI: { regular: 7.0, senior: 7.5 },
+      "Post Office TD": { regular: 7.5, senior: 7.5 },
+      "Small Finance Banks": { regular: 8.5, senior: 9.0 },
+    } as const;
+
+    const selectedRate = isSeniorCitizen ? rates[bankName].senior : rates[bankName].regular;
+    const maturityAmount = p * (1 + selectedRate / 100 / 4) ** (4 * years);
+    const totalInterest = Math.max(0, maturityAmount - p);
+    const effectiveYield = p > 0 ? ((maturityAmount / p) ** (1 / years) - 1) * 100 : 0;
+
+    const tdsThreshold = isSeniorCitizen ? 50000 : 40000;
+    const tdsDeductible = totalInterest > tdsThreshold ? totalInterest * 0.1 : 0;
+    const netInterest = totalInterest - tdsDeductible;
+
+    const comparisons = Object.entries(rates).map(([bank, rateObj]) => {
+      const rate = isSeniorCitizen ? rateObj.senior : rateObj.regular;
+      const maturity = p * (1 + rate / 100 / 4) ** (4 * years);
+      return { bank, rate, maturity, interest: Math.max(0, maturity - p) };
+    });
+
+    setResult({ maturityAmount, totalInterest, effectiveYield, tdsDeductible, netInterest, comparisons });
+  }, [principal, tenureMonths, bankName, isSeniorCitizen]);
+
+  return (
+    <CalculatorShell
+      title="Senior Citizen FD & Savings Calculator"
+      subtitle="Quarterly-compounded FD comparison with TDS impact"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Principal" value={principal} onChange={setPrincipal} />
+          <NumberInput label="Tenure (Months)" value={tenureMonths} onChange={setTenureMonths} />
+
+          <Field label="Bank / Institution">
+            <select
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value as "SBI" | "HDFC" | "ICICI" | "Post Office TD" | "Small Finance Banks")}
+              className="glass-input w-full h-11 px-3 text-sm"
+            >
+              {["SBI", "HDFC", "ICICI", "Post Office TD", "Small Finance Banks"].map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Senior Citizen">
+            <button
+              onClick={() => setIsSeniorCitizen((v) => !v)}
+              className={cn(
+                "w-full py-2 text-sm font-medium rounded-md transition-all border",
+                isSeniorCitizen
+                  ? "bg-gradient-orange text-white glow-orange border-transparent"
+                  : "text-secondary border-white/10 hover:text-white"
+              )}
+            >
+              {isSeniorCitizen ? "Yes" : "No"}
+            </button>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Maturity Amount" value={formatINR(result.maturityAmount)} green />
+            <MiniStat label="Total Interest" value={formatINR(result.totalInterest)} />
+            <MiniStat label="Effective Yield (%)" value={formatPct(result.effectiveYield)} />
+            <MiniStat label="TDS Deductible" value={formatINR(result.tdsDeductible)} />
+            <MiniStat label="Net Interest after TDS" value={formatINR(result.netInterest)} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Rate & Maturity Comparison</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Bank</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Maturity</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Interest</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.comparisons.map((row, index) => (
+                    <tr key={row.bank} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.bank}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.rate)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.maturity)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.interest)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Form 15H can be submitted by eligible senior citizens to avoid TDS.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function GratuityEligibilityCalc() {
+  const [employeeType, setEmployeeType] = useState<"Covered" | "Not Covered">("Covered");
+  const [lastDrawnBasic, setLastDrawnBasic] = useState("80000");
+  const [daPay, setDaPay] = useState("10000");
+  const [dateOfJoining, setDateOfJoining] = useState("2019-04-01");
+  const [dateOfLeaving, setDateOfLeaving] = useState("2026-04-10");
+  const [reasonForLeaving, setReasonForLeaving] = useState<"Resignation" | "Retirement" | "Death" | "Disability">("Resignation");
+  const [result, setResult] = useState({
+    exactServicePeriod: "0 years, 0 months, 0 days",
+    isEligible: false,
+    gratuityAmount: 0,
+    taxExemptAmount: 0,
+    taxableGratuity: 0,
+    appliedFourYearRule: false,
+    serviceYearsForCalc: 0,
+  });
+
+  useEffect(() => {
+    const basic = toNum(lastDrawnBasic);
+    const da = toNum(daPay);
+    const doj = new Date(dateOfJoining);
+    const dol = new Date(dateOfLeaving);
+
+    const msDiff = Math.max(0, dol.getTime() - doj.getTime());
+    const totalDays = Math.floor(msDiff / (1000 * 60 * 60 * 24));
+
+    let years = dol.getFullYear() - doj.getFullYear();
+    let months = dol.getMonth() - doj.getMonth();
+    let days = dol.getDate() - doj.getDate();
+    if (days < 0) {
+      months -= 1;
+      const prevMonth = new Date(dol.getFullYear(), dol.getMonth(), 0).getDate();
+      days += prevMonth;
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+
+    const exactServicePeriod = `${Math.max(0, years)} years, ${Math.max(0, months)} months, ${Math.max(0, days)} days`;
+    const yearsCompleted = Math.max(0, years);
+    const remainingDaysApprox = Math.max(0, totalDays - yearsCompleted * 365);
+    const fourYearRuleApplies = reasonForLeaving === "Resignation" && yearsCompleted === 4 && remainingDaysApprox >= 240;
+
+    const isEligible = reasonForLeaving === "Death" || reasonForLeaving === "Disability"
+      ? true
+      : yearsCompleted >= 5 || fourYearRuleApplies;
+
+    const serviceYearsForCalc = yearsCompleted + (months >= 6 ? 1 : 0) + (fourYearRuleApplies ? 1 : 0);
+    const salaryBase = basic + da;
+    const gratuityAmount = isEligible
+      ? employeeType === "Covered"
+        ? salaryBase * 15 / 26 * serviceYearsForCalc
+        : salaryBase * 15 / 30 * serviceYearsForCalc
+      : 0;
+
+    const exemptByFormula = salaryBase * 15 / 26 * serviceYearsForCalc;
+    const taxExemptAmount = Math.min(gratuityAmount, 2000000, exemptByFormula);
+    const taxableGratuity = Math.max(0, gratuityAmount - taxExemptAmount);
+
+    setResult({
+      exactServicePeriod,
+      isEligible,
+      gratuityAmount,
+      taxExemptAmount,
+      taxableGratuity,
+      appliedFourYearRule: fourYearRuleApplies,
+      serviceYearsForCalc,
+    });
+  }, [employeeType, lastDrawnBasic, daPay, dateOfJoining, dateOfLeaving, reasonForLeaving]);
+
+  return (
+    <CalculatorShell
+      title="Gratuity Eligibility & Computation (Detailed)"
+      subtitle="Service period-based eligibility with tax exemption calculation"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+
+          <Field label="Employee Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Covered", "Not Covered"] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setEmployeeType(item)}
+                  className={cn(
+                    "py-2 text-xs font-medium rounded-md transition-all",
+                    employeeType === item ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <MoneyInput label="Last Drawn Basic" value={lastDrawnBasic} onChange={setLastDrawnBasic} />
+          <MoneyInput label="DA (monthly)" value={daPay} onChange={setDaPay} />
+
+          <Field label="Date of Joining">
+            <input type="date" value={dateOfJoining} onChange={(e) => setDateOfJoining(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" />
+          </Field>
+
+          <Field label="Date of Leaving">
+            <input type="date" value={dateOfLeaving} onChange={(e) => setDateOfLeaving(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" />
+          </Field>
+
+          <Field label="Reason for Leaving">
+            <select
+              value={reasonForLeaving}
+              onChange={(e) => setReasonForLeaving(e.target.value as "Resignation" | "Retirement" | "Death" | "Disability")}
+              className="glass-input w-full h-11 px-3 text-sm"
+            >
+              {(["Resignation", "Retirement", "Death", "Disability"] as const).map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Exact Service Period: <span className="text-white font-medium">{result.exactServicePeriod}</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Eligibility" value={result.isEligible ? "Eligible" : "Not Eligible"} green={result.isEligible} />
+            <MiniStat label="Service Years For Computation" value={result.serviceYearsForCalc.toLocaleString("en-IN")} />
+            <MiniStat label="Gratuity Amount" value={formatINR(result.gratuityAmount)} />
+            <MiniStat label="Tax Exempt Amount" value={formatINR(result.taxExemptAmount)} green />
+            <MiniStat label="Taxable Gratuity" value={formatINR(result.taxableGratuity)} />
+          </div>
+
+          {result.appliedFourYearRule && (
+            <div className="card-surface p-4 border border-warning/40 text-sm text-warning">
+              4 years + 240 days rule applied for resignation eligibility.
+            </div>
+          )}
         </div>
       )}
     />
