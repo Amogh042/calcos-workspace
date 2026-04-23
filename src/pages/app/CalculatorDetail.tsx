@@ -94,6 +94,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "employees-stock": ESOPCalc,
   "foreign-income": ForeignIncomeCalc,
   "audit-checklist": AuditChecklistCalc,
+  "gold-returns": GoldReturnsCalc,
+  "retrenchment-compensation": RetrenchmentCalc,
+  "tds-property": TDSPropertyCalc,
+  "advance-ruling": AdvanceRulingCalc,
+  "customs-duty": CustomsDutyCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -182,6 +187,11 @@ const titleMap: Record<string, string> = {
   "employees-stock": "ESOP Tax Calculator",
   "foreign-income": "Foreign Income & DTAA Calculator",
   "audit-checklist": "Statutory Audit Checklist Score",
+  "gold-returns": "Gold Investment Returns Calculator",
+  "retrenchment-compensation": "Retrenchment Compensation Calculator",
+  "tds-property": "TDS on Property Purchase (Section 194IA)",
+  "advance-ruling": "GST Liability Quick Estimator",
+  "customs-duty": "Import Customs Duty Calculator",
 };
 
 const categoryMap: Record<string, string> = {
@@ -270,6 +280,11 @@ const categoryMap: Record<string, string> = {
   "employees-stock": "tax",
   "foreign-income": "tax",
   "audit-checklist": "audit",
+  "gold-returns": "investment",
+  "retrenchment-compensation": "payroll",
+  "tds-property": "tax",
+  "advance-ruling": "gst",
+  "customs-duty": "gst",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -10614,6 +10629,533 @@ function AuditChecklistCalc() {
                       <td className="px-5 py-2 text-secondary">{index + 1}. {item}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function GoldReturnsCalc() {
+  const [investmentAmount, setInvestmentAmount] = useState("500000");
+  const [purchaseYear, setPurchaseYear] = useState("2018");
+  const [currentYear, setCurrentYear] = useState("2026");
+  const [investmentType, setInvestmentType] = useState<"Physical Gold" | "Sovereign Gold Bond" | "Gold ETF">("Physical Gold");
+  const [purchasePricePerGram, setPurchasePricePerGram] = useState("3000");
+  const [currentPricePerGram, setCurrentPricePerGram] = useState("7800");
+  const [result, setResult] = useState({
+    grams: 0,
+    currentValue: 0,
+    absoluteReturn: 0,
+    holdingYears: 1,
+    cagr: 0,
+    sgbInterest: 0,
+    taxLiability: 0,
+    netReturnAfterTax: 0,
+    compareRows: [] as Array<{ type: string; tax: number; netReturn: number }>,
+  });
+
+  useEffect(() => {
+    const amount = toNum(investmentAmount);
+    const buyPrice = Math.max(1, toNum(purchasePricePerGram));
+    const sellPrice = toNum(currentPricePerGram);
+    const pYear = Math.max(1900, Math.floor(toNum(purchaseYear)));
+    const cYear = Math.max(pYear + 1, Math.floor(toNum(currentYear)));
+    const holdingYears = Math.max(1, cYear - pYear);
+
+    const grams = amount / buyPrice;
+    const currentValue = grams * sellPrice;
+    const absoluteReturn = currentValue - amount;
+    const cagr = amount > 0 ? (((currentValue / amount) ** (1 / holdingYears)) - 1) * 100 : 0;
+
+    const indexedTax = (gain: number) => {
+      if (gain <= 0) return 0;
+      const indexedCost = amount * (1 + 0.04 * holdingYears);
+      const taxableGain = Math.max(0, currentValue - indexedCost);
+      return taxableGain * 0.2;
+    };
+
+    const computeByType = (type: "Physical Gold" | "Sovereign Gold Bond" | "Gold ETF") => {
+      const sgbInterest = type === "Sovereign Gold Bond" ? amount * 0.025 * holdingYears : 0;
+      let taxLiability = 0;
+
+      if (type === "Sovereign Gold Bond" && holdingYears >= 8) {
+        taxLiability = 0;
+      } else if ((type === "Physical Gold" || type === "Gold ETF" || type === "Sovereign Gold Bond") && holdingYears > 3) {
+        taxLiability = indexedTax(absoluteReturn);
+      } else {
+        taxLiability = Math.max(0, absoluteReturn) * 0.3;
+      }
+
+      const netReturn = absoluteReturn + sgbInterest - taxLiability;
+      return { sgbInterest, taxLiability, netReturn };
+    };
+
+    const selected = computeByType(investmentType);
+
+    const compareRows = investmentType === "Physical Gold"
+      ? (["Physical Gold", "Sovereign Gold Bond", "Gold ETF"] as const).map((type) => {
+        const row = computeByType(type);
+        return { type, tax: row.taxLiability, netReturn: row.netReturn };
+      })
+      : [];
+
+    setResult({
+      grams,
+      currentValue,
+      absoluteReturn,
+      holdingYears,
+      cagr,
+      sgbInterest: selected.sgbInterest,
+      taxLiability: selected.taxLiability,
+      netReturnAfterTax: selected.netReturn,
+      compareRows,
+    });
+  }, [investmentAmount, purchaseYear, currentYear, investmentType, purchasePricePerGram, currentPricePerGram]);
+
+  return (
+    <CalculatorShell
+      title="Gold Investment Returns Calculator"
+      subtitle="Return, CAGR, tax and post-tax comparison across gold options"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Investment Amount" value={investmentAmount} onChange={setInvestmentAmount} />
+          <div className="grid grid-cols-2 gap-2">
+            <NumberInput label="Purchase Year" value={purchaseYear} onChange={setPurchaseYear} />
+            <NumberInput label="Current Year" value={currentYear} onChange={setCurrentYear} />
+          </div>
+          <Field label="Investment Type">
+            <select value={investmentType} onChange={(e) => setInvestmentType(e.target.value as "Physical Gold" | "Sovereign Gold Bond" | "Gold ETF")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Physical Gold", "Sovereign Gold Bond", "Gold ETF"] as const).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </Field>
+          <MoneyInput label="Purchase Price per Gram" value={purchasePricePerGram} onChange={setPurchasePricePerGram} />
+          <MoneyInput label="Current Price per Gram" value={currentPricePerGram} onChange={setCurrentPricePerGram} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Gold Quantity (grams)" value={result.grams.toLocaleString('en-IN', { maximumFractionDigits: 4 })} />
+            <MiniStat label="Current Value" value={`₹ ${result.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Absolute Return" value={`₹ ${result.absoluteReturn.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green={result.absoluteReturn >= 0} />
+            <MiniStat label="CAGR" value={`${result.cagr.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="SGB Interest" value={`₹ ${result.sgbInterest.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Tax Liability" value={`₹ ${result.taxLiability.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Net Return After Tax" value={`₹ ${result.netReturnAfterTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green={result.netReturnAfterTax >= 0} />
+          </div>
+
+          {result.compareRows.length > 0 && (
+            <div className="card-surface p-5 overflow-hidden">
+              <div className="text-sm font-semibold mb-3">Side-by-side Type Comparison</div>
+              <div className="overflow-x-auto -mx-5">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-tertiary">
+                      <th className="text-left font-medium px-5 py-2 bg-primary/10">Type</th>
+                      <th className="text-right font-medium px-3 py-2 bg-primary/10">Tax Liability</th>
+                      <th className="text-right font-medium px-5 py-2 bg-primary/10">Net Return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.compareRows.map((row, index) => (
+                      <tr key={row.type} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                        <td className="px-5 py-2 text-secondary">{row.type}</td>
+                        <td className="px-3 py-2 text-right">₹ {row.tax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-5 py-2 text-right font-medium">₹ {row.netReturn.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    />
+  );
+}
+
+function RetrenchmentCalc() {
+  const [monthlyBasic, setMonthlyBasic] = useState("45000");
+  const [monthlyDA, setMonthlyDA] = useState("12000");
+  const [yearsOfService, setYearsOfService] = useState("11");
+  const [retrenchmentType, setRetrenchmentType] = useState<"Retrenchment" | "VRS" | "Closure">("Retrenchment");
+  const [remainingMonths, setRemainingMonths] = useState("24");
+  const [result, setResult] = useState({
+    compensation: 0,
+    taxExemptAmount: 0,
+    taxableAmount: 0,
+    monthlyEquivalent: 0,
+    averagePay: 0,
+    sectionNote: "",
+  });
+
+  useEffect(() => {
+    const basic = toNum(monthlyBasic);
+    const da = toNum(monthlyDA);
+    const years = Math.max(0, Math.floor(toNum(yearsOfService)));
+    const remain = Math.max(0, Math.floor(toNum(remainingMonths)));
+
+    const salary = basic + da;
+    const averagePay = (salary / 26) * 15;
+    const baseComp = averagePay * years;
+
+    let compensation = baseComp;
+    let taxExemptAmount = 0;
+    let sectionNote = "Section 10(10B) applies";
+
+    if (retrenchmentType === "VRS") {
+      const vrsComp = Math.min(salary * 3 * years, salary * remain);
+      compensation = vrsComp;
+      taxExemptAmount = Math.min(vrsComp, 500000);
+      sectionNote = "Section 10(10C) applies";
+    } else {
+      compensation = baseComp;
+      taxExemptAmount = Math.min(compensation, 500000, baseComp);
+      sectionNote = "Section 10(10B) applies";
+    }
+
+    const taxableAmount = Math.max(0, compensation - taxExemptAmount);
+    const monthlyEquivalent = compensation / 12;
+
+    setResult({ compensation, taxExemptAmount, taxableAmount, monthlyEquivalent, averagePay, sectionNote });
+  }, [monthlyBasic, monthlyDA, yearsOfService, retrenchmentType, remainingMonths]);
+
+  return (
+    <CalculatorShell
+      title="Retrenchment Compensation Calculator"
+      subtitle="Compensation and exemption computation for retrenchment/VRS/closure"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Monthly Basic" value={monthlyBasic} onChange={setMonthlyBasic} />
+          <MoneyInput label="Monthly DA" value={monthlyDA} onChange={setMonthlyDA} />
+          <NumberInput label="Years of Service" value={yearsOfService} onChange={setYearsOfService} />
+          <Field label="Type">
+            <select value={retrenchmentType} onChange={(e) => setRetrenchmentType(e.target.value as "Retrenchment" | "VRS" | "Closure")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Retrenchment", "VRS", "Closure"] as const).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </Field>
+          {retrenchmentType === "VRS" && <NumberInput label="Remaining Months (for VRS check)" value={remainingMonths} onChange={setRemainingMonths} />}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Average 15-day Pay" value={`₹ ${result.averagePay.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Compensation" value={`₹ ${result.compensation.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Tax Exempt Amount" value={`₹ ${result.taxExemptAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Taxable Amount" value={`₹ ${result.taxableAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Monthly Equivalent" value={`₹ ${result.monthlyEquivalent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Applicable note: <span className="text-white">{result.sectionNote}</span></div>
+        </div>
+      )}
+    />
+  );
+}
+
+function TDSPropertyCalc() {
+  const [propertyValue, setPropertyValue] = useState("8500000");
+  const [sellerType, setSellerType] = useState<"Resident" | "NRI">("Resident");
+  const [isRuralAgriculturalLand, setIsRuralAgriculturalLand] = useState(false);
+  const [holdingPeriodMonths, setHoldingPeriodMonths] = useState("30");
+  const [deductionDate, setDeductionDate] = useState(new Date().toISOString().slice(0, 10));
+  const [result, setResult] = useState({
+    tdsRate: 0,
+    tdsAmount: 0,
+    netPaymentToSeller: 0,
+    depositDueDate: "-",
+    formToFile: "26QB",
+    note: "",
+  });
+
+  useEffect(() => {
+    const value = toNum(propertyValue);
+    const holdingMonths = Math.max(0, Math.floor(toNum(holdingPeriodMonths)));
+
+    let tdsRate = 0;
+    let note = "";
+    if (isRuralAgriculturalLand) {
+      tdsRate = 0;
+      note = "Rural agricultural land is exempt from TDS.";
+    } else if (value < 5000000) {
+      tdsRate = 0;
+      note = "Section 194IA applies only when value is ₹50L or more.";
+    } else if (sellerType === "Resident") {
+      tdsRate = 1;
+      note = "Resident seller: TDS @1% under Section 194IA.";
+    } else {
+      tdsRate = holdingMonths > 24 ? 22.88 : 30;
+      note = holdingMonths > 24 ? "NRI LTCG assumed @20% + surcharge + cess." : "NRI STCG assumed @30%.";
+    }
+
+    const tdsAmount = value * tdsRate / 100;
+    const netPaymentToSeller = value - tdsAmount;
+
+    const dd = new Date(deductionDate || new Date().toISOString().slice(0, 10));
+    const dueMonthFirst = new Date(dd.getFullYear(), dd.getMonth() + 1, 1);
+    const dueMonthLast = new Date(dd.getFullYear(), dd.getMonth() + 2, 0).getDate();
+    const dueDay = Math.min(30, dueMonthLast);
+    const dueDate = new Date(dd.getFullYear(), dd.getMonth() + 1, dueDay);
+    const depositDueDate = `${dueDate.getDate().toString().padStart(2, '0')}-${(dueDate.getMonth() + 1).toString().padStart(2, '0')}-${dueDate.getFullYear()}`;
+
+    setResult({ tdsRate, tdsAmount, netPaymentToSeller, depositDueDate, formToFile: "26QB", note });
+  }, [propertyValue, sellerType, isRuralAgriculturalLand, holdingPeriodMonths, deductionDate]);
+
+  return (
+    <CalculatorShell
+      title="TDS on Property Purchase (Section 194IA)"
+      subtitle="TDS rate, deduction amount and compliance timeline"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Property Value" value={propertyValue} onChange={setPropertyValue} />
+          <Field label="Seller Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["Resident", "NRI"] as const).map((type) => (
+                <button key={type} onClick={() => setSellerType(type)} className={cn("py-2 text-xs font-medium rounded-md transition-all", sellerType === type ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{type}</button>
+              ))}
+            </div>
+          </Field>
+          {sellerType === "NRI" && <NumberInput label="Seller Holding Period (Months)" value={holdingPeriodMonths} onChange={setHoldingPeriodMonths} />}
+          <Field label="Rural Agricultural Land">
+            <button onClick={() => setIsRuralAgriculturalLand((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", isRuralAgriculturalLand ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{isRuralAgriculturalLand ? "Yes" : "No"}</button>
+          </Field>
+          <Field label="Date of Deduction">
+            <input type="date" value={deductionDate} onChange={(e) => setDeductionDate(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" />
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="TDS Rate" value={`${result.tdsRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="TDS Amount" value={`₹ ${result.tdsAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Net Payment to Seller" value={`₹ ${result.netPaymentToSeller.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Deposit Due Date" value={result.depositDueDate} />
+            <MiniStat label="Form to File" value={result.formToFile} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.note}</div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">TDS certificate Form 16B to be issued to seller within 15 days.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function AdvanceRulingCalc() {
+  const [transactionType, setTransactionType] = useState<
+    "Sale of Goods" | "Export of Services" | "Import of Services" | "Works Contract" | "Real Estate (under construction)" | "Real Estate (ready to move)" | "Restaurant Services" | "Healthcare Services" | "Educational Services"
+  >("Sale of Goods");
+  const [transactionValue, setTransactionValue] = useState("300000");
+  const [stateOfSupply, setStateOfSupply] = useState("Karnataka");
+  const [isRegistered, setIsRegistered] = useState(true);
+  const [saleGoodsRate, setSaleGoodsRate] = useState("18");
+  const [realEstateWithITC, setRealEstateWithITC] = useState(false);
+  const [result, setResult] = useState({
+    gstLiability: 0,
+    reverseChargeApplicable: false,
+    isExempt: false,
+    effectiveRate: 0,
+    filingRequirement: "",
+    itcEligibilityNote: "",
+  });
+
+  useEffect(() => {
+    const value = toNum(transactionValue);
+    let effectiveRate = 0;
+    let reverseChargeApplicable = false;
+    let isExempt = false;
+    let itcEligibilityNote = "ITC eligibility depends on section-specific conditions.";
+
+    if (transactionType === "Sale of Goods") {
+      effectiveRate = toNum(saleGoodsRate);
+      itcEligibilityNote = "ITC generally available for business use and valid tax invoice.";
+    } else if (transactionType === "Export of Services") {
+      effectiveRate = 0;
+      itcEligibilityNote = "Zero-rated supply; refund route may apply for input credits.";
+    } else if (transactionType === "Import of Services") {
+      effectiveRate = 18;
+      reverseChargeApplicable = true;
+      itcEligibilityNote = "GST paid under RCM may be eligible as ITC subject to conditions.";
+    } else if (transactionType === "Works Contract") {
+      effectiveRate = 18;
+      itcEligibilityNote = "ITC available subject to blocked credit restrictions.";
+    } else if (transactionType === "Real Estate (under construction)") {
+      effectiveRate = realEstateWithITC ? 12 : 5;
+      itcEligibilityNote = realEstateWithITC ? "12% scheme with ITC." : "5% scheme generally without ITC.";
+    } else if (transactionType === "Real Estate (ready to move)") {
+      effectiveRate = 0;
+      isExempt = true;
+      itcEligibilityNote = "Exempt transaction; output GST not applicable.";
+    } else if (transactionType === "Restaurant Services") {
+      effectiveRate = 5;
+      itcEligibilityNote = "5% rate generally without ITC.";
+    } else if (transactionType === "Healthcare Services") {
+      effectiveRate = 0;
+      isExempt = true;
+      itcEligibilityNote = "Healthcare services are generally exempt.";
+    } else if (transactionType === "Educational Services") {
+      effectiveRate = 0;
+      isExempt = true;
+      itcEligibilityNote = "Educational services are generally exempt.";
+    }
+
+    const gstLiability = value * effectiveRate / 100;
+    const filingRequirement = isRegistered
+      ? (isExempt ? "Nil/appropriate GST return filing as applicable" : "GSTR-1 and GSTR-3B")
+      : "Evaluate registration threshold before filing requirement";
+
+    setResult({ gstLiability, reverseChargeApplicable, isExempt, effectiveRate, filingRequirement, itcEligibilityNote });
+  }, [transactionType, transactionValue, stateOfSupply, isRegistered, saleGoodsRate, realEstateWithITC]);
+
+  return (
+    <CalculatorShell
+      title="GST Liability Quick Estimator"
+      subtitle="Transaction-wise GST, exemption and RCM indication"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <Field label="Transaction Type">
+            <select value={transactionType} onChange={(e) => setTransactionType(e.target.value as "Sale of Goods" | "Export of Services" | "Import of Services" | "Works Contract" | "Real Estate (under construction)" | "Real Estate (ready to move)" | "Restaurant Services" | "Healthcare Services" | "Educational Services")} className="glass-input w-full h-11 px-3 text-sm">
+              {([
+                "Sale of Goods",
+                "Export of Services",
+                "Import of Services",
+                "Works Contract",
+                "Real Estate (under construction)",
+                "Real Estate (ready to move)",
+                "Restaurant Services",
+                "Healthcare Services",
+                "Educational Services",
+              ] as const).map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+          <MoneyInput label="Transaction Value" value={transactionValue} onChange={setTransactionValue} />
+          <Field label="State of Supply">
+            <input value={stateOfSupply} onChange={(e) => setStateOfSupply(e.target.value)} className="glass-input w-full h-11 px-3 text-sm" />
+          </Field>
+          <Field label="GST Registered">
+            <button onClick={() => setIsRegistered((v) => !v)} className={cn("w-full py-2 text-sm font-medium rounded-md transition-all border", isRegistered ? "bg-gradient-orange text-white glow-orange border-transparent" : "text-secondary border-white/10 hover:text-white")}>{isRegistered ? "Yes" : "No"}</button>
+          </Field>
+          {transactionType === "Sale of Goods" && <NumberInput label="GST Rate for Sale of Goods (%)" value={saleGoodsRate} onChange={setSaleGoodsRate} />}
+          {transactionType === "Real Estate (under construction)" && (
+            <Field label="Choose Scheme">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+                {(["5% no ITC", "12% with ITC"] as const).map((option, idx) => (
+                  <button key={option} onClick={() => setRealEstateWithITC(idx === 1)} className={cn("py-2 text-xs font-medium rounded-md transition-all", (idx === 1) === realEstateWithITC ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{option}</button>
+                ))}
+              </div>
+            </Field>
+          )}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="GST Liability" value={`₹ ${result.gstLiability.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Effective Rate" value={`${result.effectiveRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="Reverse Charge" value={result.reverseChargeApplicable ? "Applicable" : "Not Applicable"} />
+            <MiniStat label="Exempt" value={result.isExempt ? "Yes" : "No"} green={result.isExempt} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Filing requirement: <span className="text-white">{result.filingRequirement}</span></div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">ITC note: {result.itcEligibilityNote}</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function CustomsDutyCalc() {
+  const [assessableValue, setAssessableValue] = useState("12000");
+  const [exchangeRate, setExchangeRate] = useState("84");
+  const [productCategory, setProductCategory] = useState<"Electronics" | "Mobile Phones" | "Machinery" | "Raw Materials" | "Luxury Goods" | "Food Products">("Electronics");
+  const [result, setResult] = useState({
+    inrValue: 0,
+    bcd: 0,
+    sws: 0,
+    igst: 0,
+    totalDuty: 0,
+    totalLandedCost: 0,
+    effectiveDutyRate: 0,
+    bcdRate: 0,
+    igstRate: 0,
+  });
+
+  useEffect(() => {
+    const rates: Record<"Electronics" | "Mobile Phones" | "Machinery" | "Raw Materials" | "Luxury Goods" | "Food Products", { bcdRate: number; igstRate: number }> = {
+      Electronics: { bcdRate: 20, igstRate: 18 },
+      "Mobile Phones": { bcdRate: 20, igstRate: 12 },
+      Machinery: { bcdRate: 7.5, igstRate: 18 },
+      "Raw Materials": { bcdRate: 5, igstRate: 12 },
+      "Luxury Goods": { bcdRate: 100, igstRate: 28 },
+      "Food Products": { bcdRate: 30, igstRate: 5 },
+    };
+
+    const usd = toNum(assessableValue);
+    const fx = toNum(exchangeRate);
+    const inrValue = usd * fx;
+    const bcdRate = rates[productCategory].bcdRate;
+    const igstRate = rates[productCategory].igstRate;
+
+    const bcd = inrValue * bcdRate / 100;
+    const sws = bcd * 0.1;
+    const totalDutyBeforeIGST = inrValue + bcd + sws;
+    const igst = totalDutyBeforeIGST * igstRate / 100;
+    const totalDuty = bcd + sws + igst;
+    const totalLandedCost = inrValue + totalDuty;
+    const effectiveDutyRate = inrValue > 0 ? (totalDuty / inrValue) * 100 : 0;
+
+    setResult({ inrValue, bcd, sws, igst, totalDuty, totalLandedCost, effectiveDutyRate, bcdRate, igstRate });
+  }, [assessableValue, exchangeRate, productCategory]);
+
+  return (
+    <CalculatorShell
+      title="Import Customs Duty Calculator"
+      subtitle="BCD + SWS + IGST computation with landed cost view"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <NumberInput label="Assessable Value (USD)" value={assessableValue} onChange={setAssessableValue} />
+          <NumberInput label="Exchange Rate" value={exchangeRate} onChange={setExchangeRate} />
+          <Field label="Product Category">
+            <select value={productCategory} onChange={(e) => setProductCategory(e.target.value as "Electronics" | "Mobile Phones" | "Machinery" | "Raw Materials" | "Luxury Goods" | "Food Products")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Electronics", "Mobile Phones", "Machinery", "Raw Materials", "Luxury Goods", "Food Products"] as const).map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="INR Value" value={`₹ ${result.inrValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="BCD" value={`₹ ${result.bcd.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="SWS" value={`₹ ${result.sws.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="IGST" value={`₹ ${result.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Duty" value={`₹ ${result.totalDuty.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Landed Cost" value={`₹ ${result.totalLandedCost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Effective Duty Rate" value={`${result.effectiveDutyRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Duty Breakdown</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr><td className="px-5 py-2 text-secondary">Assessable INR Value</td><td className="px-5 py-2 text-right">₹ {result.inrValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">BCD ({result.bcdRate.toLocaleString('en-IN')}%)</td><td className="px-5 py-2 text-right">₹ {result.bcd.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">SWS (10% on BCD)</td><td className="px-5 py-2 text-right">₹ {result.sws.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">IGST ({result.igstRate.toLocaleString('en-IN')}%)</td><td className="px-5 py-2 text-right">₹ {result.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr className="border-t border-primary/20"><td className="px-5 py-2.5 font-bold">Total Duty</td><td className="px-5 py-2.5 text-right font-bold">₹ {result.totalDuty.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
                 </tbody>
               </table>
             </div>
