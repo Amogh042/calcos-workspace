@@ -74,6 +74,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "nps-calculator": NPSCalc,
   "senior-citizen-fd": SCFDCalc,
   "gratuity-eligibility": GratuityEligibilityCalc,
+  "cash-flow": CashFlowCalc,
+  "budget-variance": BudgetVarianceCalc,
+  "invoice-gst": InvoiceGSTCalc,
+  "partnership-profit": PartnershipProfitCalc,
+  "depreciation-comparison": DepreciationComparisonCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -142,6 +147,11 @@ const titleMap: Record<string, string> = {
   "nps-calculator": "NPS (National Pension System) Calculator",
   "senior-citizen-fd": "Senior Citizen FD & Savings Calculator",
   "gratuity-eligibility": "Gratuity Eligibility & Computation (Detailed)",
+  "cash-flow": "Cash Flow Statement Analyser",
+  "budget-variance": "Budget vs Actual Variance Analysis",
+  "invoice-gst": "GST Invoice Calculator",
+  "partnership-profit": "Partnership Profit Sharing Calculator",
+  "depreciation-comparison": "Depreciation Methods Comparison",
 };
 
 const categoryMap: Record<string, string> = {
@@ -210,6 +220,11 @@ const categoryMap: Record<string, string> = {
   "nps-calculator": "investment",
   "senior-citizen-fd": "investment",
   "gratuity-eligibility": "payroll",
+  "cash-flow": "ratios",
+  "budget-variance": "ratios",
+  "invoice-gst": "gst",
+  "partnership-profit": "ratios",
+  "depreciation-comparison": "depreciation",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -8086,6 +8101,746 @@ function GratuityEligibilityCalc() {
               4 years + 240 days rule applied for resignation eligibility.
             </div>
           )}
+        </div>
+      )}
+    />
+  );
+}
+
+function CashFlowCalc() {
+  const [netIncome, setNetIncome] = useState("1200000");
+  const [depreciation, setDepreciation] = useState("180000");
+  const [amortisation, setAmortisation] = useState("40000");
+  const [changeInReceivables, setChangeInReceivables] = useState("100000");
+  const [changeInInventory, setChangeInInventory] = useState("70000");
+  const [changeInPayables, setChangeInPayables] = useState("50000");
+  const [otherOperating, setOtherOperating] = useState("10000");
+  const [capex, setCapex] = useState("300000");
+  const [assetSales, setAssetSales] = useState("25000");
+  const [acquisitions, setAcquisitions] = useState("0");
+  const [otherInvesting, setOtherInvesting] = useState("0");
+  const [debtRaised, setDebtRaised] = useState("200000");
+  const [debtRepaid, setDebtRepaid] = useState("50000");
+  const [equityIssued, setEquityIssued] = useState("0");
+  const [dividendsPaid, setDividendsPaid] = useState("30000");
+  const [otherFinancing, setOtherFinancing] = useState("0");
+  const [revenue, setRevenue] = useState("5000000");
+  const [result, setResult] = useState({
+    operatingCF: 0,
+    investingCF: 0,
+    financingCF: 0,
+    netCashFlow: 0,
+    freeCashFlow: 0,
+    ocfRevenueRatio: 0,
+  });
+
+  useEffect(() => {
+    const opNet = toNum(netIncome);
+    const dep = toNum(depreciation);
+    const amo = toNum(amortisation);
+    const recv = toNum(changeInReceivables);
+    const inv = toNum(changeInInventory);
+    const pay = toNum(changeInPayables);
+    const otherOp = toNum(otherOperating);
+
+    const cap = toNum(capex);
+    const sales = toNum(assetSales);
+    const acq = toNum(acquisitions);
+    const otherInv = toNum(otherInvesting);
+
+    const debtIn = toNum(debtRaised);
+    const debtOut = toNum(debtRepaid);
+    const eq = toNum(equityIssued);
+    const div = toNum(dividendsPaid);
+    const otherFin = toNum(otherFinancing);
+
+    const rev = toNum(revenue);
+
+    const operatingCF = opNet + dep + amo - recv - inv + pay + otherOp;
+    const investingCF = -cap + sales - acq + otherInv;
+    const financingCF = debtIn - debtOut + eq - div + otherFin;
+    const netCashFlow = operatingCF + investingCF + financingCF;
+    const freeCashFlow = operatingCF - cap;
+    const ocfRevenueRatio = rev > 0 ? (operatingCF / rev) * 100 : 0;
+
+    setResult({ operatingCF, investingCF, financingCF, netCashFlow, freeCashFlow, ocfRevenueRatio });
+  }, [
+    netIncome,
+    depreciation,
+    amortisation,
+    changeInReceivables,
+    changeInInventory,
+    changeInPayables,
+    otherOperating,
+    capex,
+    assetSales,
+    acquisitions,
+    otherInvesting,
+    debtRaised,
+    debtRepaid,
+    equityIssued,
+    dividendsPaid,
+    otherFinancing,
+    revenue,
+  ]);
+
+  const status = result.operatingCF > 0 ? "Healthy" : "Warning";
+
+  return (
+    <CalculatorShell
+      title="Cash Flow Statement Analyser"
+      subtitle="Operating, investing, financing cash flow with formal statement view"
+      inputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Operating Activities</h2>
+            <MoneyInput label="Net Income" value={netIncome} onChange={setNetIncome} />
+            <MoneyInput label="Depreciation" value={depreciation} onChange={setDepreciation} />
+            <MoneyInput label="Amortisation" value={amortisation} onChange={setAmortisation} />
+            <MoneyInput label="Change in Receivables" value={changeInReceivables} onChange={setChangeInReceivables} />
+            <MoneyInput label="Change in Inventory" value={changeInInventory} onChange={setChangeInInventory} />
+            <MoneyInput label="Change in Payables" value={changeInPayables} onChange={setChangeInPayables} />
+            <MoneyInput label="Other Operating" value={otherOperating} onChange={setOtherOperating} />
+          </div>
+
+          <div className="card-surface p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Investing Activities</h2>
+            <MoneyInput label="Capex" value={capex} onChange={setCapex} />
+            <MoneyInput label="Asset Sales" value={assetSales} onChange={setAssetSales} />
+            <MoneyInput label="Acquisitions" value={acquisitions} onChange={setAcquisitions} />
+            <MoneyInput label="Other Investing" value={otherInvesting} onChange={setOtherInvesting} />
+          </div>
+
+          <div className="card-surface p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Financing Activities</h2>
+            <MoneyInput label="Debt Raised" value={debtRaised} onChange={setDebtRaised} />
+            <MoneyInput label="Debt Repaid" value={debtRepaid} onChange={setDebtRepaid} />
+            <MoneyInput label="Equity Issued" value={equityIssued} onChange={setEquityIssued} />
+            <MoneyInput label="Dividends Paid" value={dividendsPaid} onChange={setDividendsPaid} />
+            <MoneyInput label="Other Financing" value={otherFinancing} onChange={setOtherFinancing} />
+            <MoneyInput label="Revenue (Optional for OCF Ratio)" value={revenue} onChange={setRevenue} />
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Cash Flow Statement Layout</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr><td className="px-5 py-2 text-secondary">Cash Flow from Operating Activities</td><td className="px-5 py-2 text-right font-semibold">{formatINR(result.operatingCF)}</td></tr>
+                  <tr className="bg-white/[0.02]"><td className="px-5 py-2 text-secondary">Cash Flow from Investing Activities</td><td className="px-5 py-2 text-right font-semibold">{formatINR(result.investingCF)}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Cash Flow from Financing Activities</td><td className="px-5 py-2 text-right font-semibold">{formatINR(result.financingCF)}</td></tr>
+                  <tr className="border-t border-primary/20 bg-primary/5"><td className="px-5 py-2.5 font-bold">Net Cash Flow</td><td className="px-5 py-2.5 text-right font-bold">{formatINR(result.netCashFlow)}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Free Cash Flow (OCF - Capex)</td><td className="px-5 py-2 text-right font-semibold">{formatINR(result.freeCashFlow)}</td></tr>
+                  <tr className="bg-white/[0.02]"><td className="px-5 py-2 text-secondary">OCF / Revenue Ratio</td><td className="px-5 py-2 text-right font-semibold">{formatPct(result.ocfRevenueRatio)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className={cn(
+            "card-surface p-4 border text-sm",
+            status === "Healthy" ? "border-success/40 text-success" : "border-warning/40 text-warning"
+          )}>
+            Operating Cash Flow Status: {status}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function BudgetVarianceCalc() {
+  type VarianceItem = { label: string; budgeted: string; actual: string };
+
+  const [items, setItems] = useState<VarianceItem[]>([
+    { label: "Revenue", budgeted: "12000000", actual: "12500000" },
+    { label: "COGS", budgeted: "7000000", actual: "7300000" },
+    { label: "Gross Profit", budgeted: "5000000", actual: "5200000" },
+    { label: "Salaries", budgeted: "1400000", actual: "1450000" },
+    { label: "Rent", budgeted: "600000", actual: "600000" },
+    { label: "Marketing", budgeted: "500000", actual: "550000" },
+    { label: "Admin", budgeted: "350000", actual: "320000" },
+    { label: "EBITDA", budgeted: "2150000", actual: "2280000" },
+  ]);
+
+  const [result, setResult] = useState({
+    rows: [] as Array<{
+      label: string;
+      budgeted: number;
+      actual: number;
+      variance: number;
+      variancePercent: number;
+      status: "Favourable" | "Adverse" | "Within 5%";
+    }>,
+    totalBudgeted: 0,
+    totalActual: 0,
+    totalVariance: 0,
+    totalVariancePct: 0,
+    summary: "",
+  });
+
+  useEffect(() => {
+    const isPerformanceLabel = (label: string) => /revenue|profit|ebitda/i.test(label);
+    const computed = items.map((item) => {
+      const budgeted = toNum(item.budgeted);
+      const actual = toNum(item.actual);
+      const variance = actual - budgeted;
+      const variancePercent = budgeted !== 0 ? (variance / budgeted) * 100 : 0;
+      const within5 = Math.abs(variancePercent) <= 5;
+      const favourable = isPerformanceLabel(item.label) ? variance >= 0 : variance <= 0;
+      const status: "Favourable" | "Adverse" | "Within 5%" = within5
+        ? "Within 5%"
+        : favourable
+          ? "Favourable"
+          : "Adverse";
+      return { label: item.label, budgeted, actual, variance, variancePercent, status };
+    });
+
+    const totalBudgeted = computed.reduce((sum, row) => sum + row.budgeted, 0);
+    const totalActual = computed.reduce((sum, row) => sum + row.actual, 0);
+    const totalVariance = totalActual - totalBudgeted;
+    const totalVariancePct = totalBudgeted !== 0 ? (totalVariance / totalBudgeted) * 100 : 0;
+    const favourableCount = computed.filter((row) => row.status === "Favourable").length;
+    const adverseCount = computed.filter((row) => row.status === "Adverse").length;
+    const summary = favourableCount >= adverseCount
+      ? "Overall performance is trending favourable."
+      : "Overall performance shows adverse variance pressure.";
+
+    setResult({ rows: computed, totalBudgeted, totalActual, totalVariance, totalVariancePct, summary });
+  }, [items]);
+
+  const updateItem = (index: number, key: keyof VarianceItem, value: string) => {
+    setItems((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  };
+
+  return (
+    <CalculatorShell
+      title="Budget vs Actual Variance Analysis"
+      subtitle="Line-item variance, percentage and favourable/adverse classification"
+      inputPanel={(
+        <div className="card-surface p-5 space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Line Items (Up to 8)</h2>
+          {items.map((item, index) => (
+            <div key={item.label + index} className="grid grid-cols-[1fr_120px_120px] gap-2">
+              <input
+                value={item.label}
+                onChange={(e) => updateItem(index, "label", e.target.value)}
+                className="glass-input h-10 px-3 text-sm"
+              />
+              <input
+                value={item.budgeted}
+                inputMode="decimal"
+                onChange={(e) => updateItem(index, "budgeted", e.target.value.replace(/[^0-9.]/g, ""))}
+                className="glass-input h-10 px-3 text-sm text-right"
+              />
+              <input
+                value={item.actual}
+                inputMode="decimal"
+                onChange={(e) => updateItem(index, "actual", e.target.value.replace(/[^0-9.]/g, ""))}
+                className="glass-input h-10 px-3 text-sm text-right"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Variance Table</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Item</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Budget</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Actual</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Variance</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">%</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.label + index} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.label}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.budgeted)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.actual)}</td>
+                      <td className="px-3 py-2 text-right">{`₹ ${row.variance.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td>
+                      <td className="px-3 py-2 text-right">{formatPct(row.variancePercent)}</td>
+                      <td className="px-5 py-2 text-right">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-pill text-[10px] font-semibold border",
+                          row.status === "Favourable"
+                            ? "text-success border-success/40 bg-success/10"
+                            : row.status === "Adverse"
+                              ? "text-red-400 border-red-400/40 bg-red-400/10"
+                              : "text-warning border-warning/40 bg-warning/10"
+                        )}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-primary/20 bg-primary/5">
+                    <td className="px-5 py-2.5 font-bold">Total</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{formatINR(result.totalBudgeted)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{formatINR(result.totalActual)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{`₹ ${result.totalVariance.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td>
+                    <td className="px-3 py-2.5 text-right font-bold">{formatPct(result.totalVariancePct)}</td>
+                    <td className="px-5 py-2.5 text-right">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">{result.summary}</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function InvoiceGSTCalc() {
+  type InvoiceItem = { description: string; quantity: string; rate: string; gstRate: string };
+
+  const [sellerState, setSellerState] = useState("Karnataka");
+  const [buyerState, setBuyerState] = useState("Karnataka");
+  const [hsnNote, setHsnNote] = useState("HSN/SAC to be filled as applicable");
+  const [items, setItems] = useState<InvoiceItem[]>([
+    { description: "Consulting Service", quantity: "1", rate: "50000", gstRate: "18" },
+  ]);
+  const [result, setResult] = useState({
+    rows: [] as Array<{ description: string; quantity: number; rate: number; gstRate: number; taxableValue: number; cgst: number; sgst: number; igst: number; total: number }>,
+    totalTaxableValue: 0,
+    totalCGST: 0,
+    totalSGST: 0,
+    totalIGST: 0,
+    totalGST: 0,
+    grandTotal: 0,
+    sameState: true,
+  });
+
+  useEffect(() => {
+    const sameState = sellerState.trim().toLowerCase() === buyerState.trim().toLowerCase();
+    const rows = items.map((item) => {
+      const quantity = toNum(item.quantity);
+      const rate = toNum(item.rate);
+      const gstRate = toNum(item.gstRate);
+      const taxableValue = quantity * rate;
+      const cgst = sameState ? taxableValue * gstRate / 200 : 0;
+      const sgst = sameState ? taxableValue * gstRate / 200 : 0;
+      const igst = sameState ? 0 : taxableValue * gstRate / 100;
+      const total = taxableValue + cgst + sgst + igst;
+      return { description: item.description, quantity, rate, gstRate, taxableValue, cgst, sgst, igst, total };
+    });
+
+    const totalTaxableValue = rows.reduce((sum, row) => sum + row.taxableValue, 0);
+    const totalCGST = rows.reduce((sum, row) => sum + row.cgst, 0);
+    const totalSGST = rows.reduce((sum, row) => sum + row.sgst, 0);
+    const totalIGST = rows.reduce((sum, row) => sum + row.igst, 0);
+    const totalGST = totalCGST + totalSGST + totalIGST;
+    const grandTotal = totalTaxableValue + totalGST;
+
+    setResult({ rows, totalTaxableValue, totalCGST, totalSGST, totalIGST, totalGST, grandTotal, sameState });
+  }, [sellerState, buyerState, items]);
+
+  const updateItem = (index: number, key: keyof InvoiceItem, value: string) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [key]: value } : item)));
+  };
+
+  const addItem = () => {
+    setItems((prev) => (prev.length >= 5 ? prev : [...prev, { description: "", quantity: "1", rate: "0", gstRate: "18" }]));
+  };
+
+  return (
+    <CalculatorShell
+      title="GST Invoice Calculator"
+      subtitle="Invoice-style GST computation for intra/inter-state supply"
+      inputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Party Details</h2>
+            <Field label="Seller State">
+              <input value={sellerState} onChange={(e) => setSellerState(e.target.value)} className="glass-input w-full h-10 px-3 text-sm" />
+            </Field>
+            <Field label="Buyer State">
+              <input value={buyerState} onChange={(e) => setBuyerState(e.target.value)} className="glass-input w-full h-10 px-3 text-sm" />
+            </Field>
+          </div>
+
+          <div className="card-surface p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Line Items (Max 5)</h2>
+              <button onClick={addItem} className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white">Add Item</button>
+            </div>
+            {items.map((item, index) => (
+              <div key={`line-${index}`} className="grid grid-cols-[1.2fr_70px_110px_80px] gap-2">
+                <input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="glass-input h-10 px-3 text-sm" placeholder="Description" />
+                <input value={item.quantity} inputMode="decimal" onChange={(e) => updateItem(index, "quantity", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Qty" />
+                <input value={item.rate} inputMode="decimal" onChange={(e) => updateItem(index, "rate", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Rate" />
+                <select value={item.gstRate} onChange={(e) => updateItem(index, "gstRate", e.target.value)} className="glass-input h-10 px-2 text-sm">
+                  {["0", "5", "12", "18", "28"].map((rate) => (
+                    <option key={rate} value={rate}>{rate}%</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <Field label="HSN/SAC Note">
+              <input value={hsnNote} onChange={(e) => setHsnNote(e.target.value)} className="glass-input w-full h-10 px-3 text-sm" />
+            </Field>
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Invoice-style Tax Table</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Description</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Qty</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Rate</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">GST %</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Taxable</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Tax</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.description + index} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.description || "Item"}</td>
+                      <td className="px-2 py-2 text-right">{row.quantity.toLocaleString("en-IN")}</td>
+                      <td className="px-2 py-2 text-right">{formatINR(row.rate)}</td>
+                      <td className="px-2 py-2 text-right">{formatPct(row.gstRate)}</td>
+                      <td className="px-2 py-2 text-right">{formatINR(row.taxableValue)}</td>
+                      <td className="px-2 py-2 text-right">{formatINR(result.sameState ? row.cgst + row.sgst : row.igst)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 text-sm text-secondary space-y-1">
+            <div>Total Taxable Value: <span className="text-white font-medium">{formatINR(result.totalTaxableValue)}</span></div>
+            {result.sameState ? (
+              <>
+                <div>CGST: <span className="text-white font-medium">{formatINR(result.totalCGST)}</span></div>
+                <div>SGST: <span className="text-white font-medium">{formatINR(result.totalSGST)}</span></div>
+              </>
+            ) : (
+              <div>IGST: <span className="text-white font-medium">{formatINR(result.totalIGST)}</span></div>
+            )}
+            <div>Grand Total: <span className="text-white font-semibold">{formatINR(result.grandTotal)}</span></div>
+            <div>HSN/SAC Note: <span className="text-white">{hsnNote}</span></div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            This is a tax computation — not a legal invoice.
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PartnershipProfitCalc() {
+  type Partner = { name: string; profitSharingRatio: string; salary: string; interestOnCapital: string; capital: string };
+
+  const [totalProfit, setTotalProfit] = useState("1200000");
+  const [partners, setPartners] = useState<Partner[]>([
+    { name: "Partner A", profitSharingRatio: "3", salary: "120000", interestOnCapital: "8", capital: "1500000" },
+    { name: "Partner B", profitSharingRatio: "2", salary: "90000", interestOnCapital: "8", capital: "1000000" },
+  ]);
+  const [result, setResult] = useState({
+    salaryTotal: 0,
+    interestTotal: 0,
+    distributableProfit: 0,
+    rows: [] as Array<{
+      name: string;
+      salary: number;
+      interest: number;
+      share: number;
+      finalAmount: number;
+      effectivePct: number;
+    }>,
+  });
+
+  useEffect(() => {
+    const profit = toNum(totalProfit);
+    const isLoss = profit < 0;
+    const ratios = partners.map((p) => Math.max(0, toNum(p.profitSharingRatio)));
+    const ratioSum = ratios.reduce((sum, r) => sum + r, 0) || 1;
+
+    const salaryTotal = isLoss ? 0 : partners.reduce((sum, p) => sum + toNum(p.salary), 0);
+    const interestAmounts = isLoss
+      ? partners.map(() => 0)
+      : partners.map((p) => toNum(p.capital) * toNum(p.interestOnCapital) / 100);
+    const interestTotal = interestAmounts.reduce((sum, x) => sum + x, 0);
+    const distributableProfit = isLoss ? profit : profit - salaryTotal - interestTotal;
+
+    const rows = partners.map((partner, index) => {
+      const salary = isLoss ? 0 : toNum(partner.salary);
+      const interest = isLoss ? 0 : interestAmounts[index];
+      const share = distributableProfit * (ratios[index] / ratioSum);
+      const finalAmount = salary + interest + share;
+      const effectivePct = profit !== 0 ? (finalAmount / profit) * 100 : 0;
+      return { name: partner.name, salary, interest, share, finalAmount, effectivePct };
+    });
+
+    setResult({ salaryTotal, interestTotal, distributableProfit, rows });
+  }, [totalProfit, partners]);
+
+  const updatePartner = (index: number, key: keyof Partner, value: string) => {
+    setPartners((prev) => prev.map((p, i) => (i === index ? { ...p, [key]: value } : p)));
+  };
+
+  const addPartner = () => {
+    setPartners((prev) => (prev.length >= 6 ? prev : [...prev, {
+      name: `Partner ${prev.length + 1}`,
+      profitSharingRatio: "1",
+      salary: "0",
+      interestOnCapital: "0",
+      capital: "0",
+    }]));
+  };
+
+  return (
+    <CalculatorShell
+      title="Partnership Profit Sharing Calculator"
+      subtitle="Appropriation from net profit to partner-level final allocation"
+      inputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 space-y-3">
+            <MoneyInput label="Total Profit / (Loss)" value={totalProfit} onChange={setTotalProfit} />
+          </div>
+          <div className="card-surface p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Partners (Max 6)</h2>
+              <button onClick={addPartner} className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white">Add Partner</button>
+            </div>
+            {partners.map((partner, index) => (
+              <div key={partner.name + index} className="grid grid-cols-[1fr_70px_90px_80px_120px] gap-2">
+                <input value={partner.name} onChange={(e) => updatePartner(index, "name", e.target.value)} className="glass-input h-10 px-3 text-sm" placeholder="Name" />
+                <input value={partner.profitSharingRatio} onChange={(e) => updatePartner(index, "profitSharingRatio", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Ratio" />
+                <input value={partner.salary} onChange={(e) => updatePartner(index, "salary", e.target.value.replace(/[^0-9]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Salary" />
+                <input value={partner.interestOnCapital} onChange={(e) => updatePartner(index, "interestOnCapital", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Int%" />
+                <input value={partner.capital} onChange={(e) => updatePartner(index, "capital", e.target.value.replace(/[^0-9]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Capital" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-4 text-sm text-secondary space-y-1">
+            <div>Net Profit: <span className="text-white font-medium">{formatINR(toNum(totalProfit))}</span></div>
+            <div>Less: Salaries: <span className="text-white font-medium">{formatINR(result.salaryTotal)}</span></div>
+            <div>Less: Interest on Capital: <span className="text-white font-medium">{formatINR(result.interestTotal)}</span></div>
+            <div>Distributable Profit: <span className="text-white font-semibold">{formatINR(result.distributableProfit)}</span></div>
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Partner Allocation</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Partner</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Salary</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Interest</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Share</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">Final Amount</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Effective %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.name + index} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.name}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.salary)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.interest)}</td>
+                      <td className="px-3 py-2 text-right">{`₹ ${row.share.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td>
+                      <td className="px-3 py-2 text-right font-medium">{`₹ ${row.finalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td>
+                      <td className="px-5 py-2 text-right">{formatPct(row.effectivePct)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function DepreciationComparisonCalc() {
+  const [assetCost, setAssetCost] = useState("1000000");
+  const [salvageValue, setSalvageValue] = useState("100000");
+  const [usefulLife, setUsefulLife] = useState("5");
+  const [decliningRate, setDecliningRate] = useState("200");
+  const [result, setResult] = useState({
+    rows: [] as Array<{
+      year: number;
+      slm: number;
+      wdv: number;
+      syd: number;
+      ddb: number;
+      slmBook: number;
+      wdvBook: number;
+      sydBook: number;
+      ddbBook: number;
+    }>,
+    totalSLM: 0,
+    totalWDV: 0,
+    totalSYD: 0,
+    totalDDB: 0,
+    earlyHighMethod: "",
+  });
+
+  useEffect(() => {
+    const cost = toNum(assetCost);
+    const salvage = Math.min(cost, toNum(salvageValue));
+    const life = Math.max(1, Math.floor(toNum(usefulLife)));
+    const depBase = Math.max(0, cost - salvage);
+    const wdvRate = 100 / life;
+    const ddbMultiplier = toNum(decliningRate) / 100;
+    const sumDigits = life * (life + 1) / 2;
+    const slmDep = depBase / life;
+
+    let slmBook = cost;
+    let wdvBook = cost;
+    let sydBook = cost;
+    let ddbBook = cost;
+
+    const rows: Array<{
+      year: number;
+      slm: number;
+      wdv: number;
+      syd: number;
+      ddb: number;
+      slmBook: number;
+      wdvBook: number;
+      sydBook: number;
+      ddbBook: number;
+    }> = [];
+
+    for (let year = 1; year <= life; year += 1) {
+      const slm = Math.min(slmDep, Math.max(0, slmBook - salvage));
+      slmBook = Math.max(salvage, slmBook - slm);
+
+      const wdv = Math.min(wdvBook * wdvRate / 100, Math.max(0, wdvBook - salvage));
+      wdvBook = Math.max(salvage, wdvBook - wdv);
+
+      const syd = Math.min(((life - year + 1) / sumDigits) * depBase, Math.max(0, sydBook - salvage));
+      sydBook = Math.max(salvage, sydBook - syd);
+
+      const ddbCandidate = ddbBook * ddbMultiplier / life;
+      const ddb = Math.min(ddbCandidate, Math.max(0, ddbBook - salvage));
+      ddbBook = Math.max(salvage, ddbBook - ddb);
+
+      rows.push({ year, slm, wdv, syd, ddb, slmBook, wdvBook, sydBook, ddbBook });
+    }
+
+    const totalSLM = rows.reduce((sum, row) => sum + row.slm, 0);
+    const totalWDV = rows.reduce((sum, row) => sum + row.wdv, 0);
+    const totalSYD = rows.reduce((sum, row) => sum + row.syd, 0);
+    const totalDDB = rows.reduce((sum, row) => sum + row.ddb, 0);
+    const earlyHighMethod = rows.length > 0 && rows[0].ddb >= rows[0].syd ? "DDB" : "SYD";
+
+    setResult({ rows, totalSLM, totalWDV, totalSYD, totalDDB, earlyHighMethod });
+  }, [assetCost, salvageValue, usefulLife, decliningRate]);
+
+  return (
+    <CalculatorShell
+      title="Depreciation Methods Comparison"
+      subtitle="Side-by-side SLM, WDV, SYD and Double Declining comparison"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Inputs</h2>
+          <MoneyInput label="Asset Cost" value={assetCost} onChange={setAssetCost} />
+          <MoneyInput label="Salvage Value" value={salvageValue} onChange={setSalvageValue} />
+          <NumberInput label="Useful Life (Years)" value={usefulLife} onChange={setUsefulLife} />
+          <NumberInput label="Declining Rate Multiplier (%)" value={decliningRate} onChange={setDecliningRate} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Depreciation Per Year</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">SLM</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">WDV</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">SYD</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">DDB</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={row.year} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.slm)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.wdv)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.syd)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.ddb)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 text-sm text-secondary space-y-1">
+            <div>Total Depreciation (SLM): <span className="text-white font-medium">{formatINR(result.totalSLM)}</span></div>
+            <div>Total Depreciation (WDV): <span className="text-white font-medium">{formatINR(result.totalWDV)}</span></div>
+            <div>Total Depreciation (SYD): <span className="text-white font-medium">{formatINR(result.totalSYD)}</span></div>
+            <div>Total Depreciation (DDB): <span className="text-white font-medium">{formatINR(result.totalDDB)}</span></div>
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Chart Data (Declining Book Values)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Year</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">SLM Book</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">WDV Book</th>
+                    <th className="text-right font-medium px-3 py-2 bg-primary/10">SYD Book</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">DDB Book</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={`book-${row.year}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.year.toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.slmBook)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.wdvBook)}</td>
+                      <td className="px-3 py-2 text-right">{formatINR(row.sydBook)}</td>
+                      <td className="px-5 py-2 text-right font-medium">{formatINR(row.ddbBook)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">
+            Highest early-year depreciation method: <span className="text-white font-medium">{result.earlyHighMethod}</span>. Equal annual distribution method: <span className="text-white font-medium">SLM</span>.
+          </div>
         </div>
       )}
     />
