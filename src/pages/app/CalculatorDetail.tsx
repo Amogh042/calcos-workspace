@@ -84,6 +84,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "income-tax-notice": IncomeTaxNoticeCalc,
   "startup-valuation": StartupValuationCalc,
   "tax-planning": TaxPlanningCalc,
+  "receivables-aging": ReceivablesAgingCalc,
+  "tds-26as": TDS26ASCalc,
+  "salary-hike": SalaryHikeCalc,
+  "gst-annual-return": GSTAnnualReturnCalc,
+  "crypto-tax": CryptoTaxCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -162,6 +167,11 @@ const titleMap: Record<string, string> = {
   "income-tax-notice": "Income Tax Notice Interest Calculator",
   "startup-valuation": "Startup Valuation Calculator",
   "tax-planning": "Tax Planning & Saving Optimizer",
+  "receivables-aging": "Accounts Receivable Aging Analysis",
+  "tds-26as": "TDS 26AS Reconciliation",
+  "salary-hike": "Salary Hike & CTC Revision Calculator",
+  "gst-annual-return": "GSTR-9 Annual Return Summary",
+  "crypto-tax": "Crypto & VDA Tax Calculator (India)",
 };
 
 const categoryMap: Record<string, string> = {
@@ -240,6 +250,11 @@ const categoryMap: Record<string, string> = {
   "income-tax-notice": "tax",
   "startup-valuation": "valuation",
   "tax-planning": "tax",
+  "receivables-aging": "ratios",
+  "tds-26as": "tax",
+  "salary-hike": "payroll",
+  "gst-annual-return": "gst",
+  "crypto-tax": "tax",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -9331,6 +9346,685 @@ function TaxPlanningCalc() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ReceivablesAgingCalc() {
+  type Debtor = { clientName: string; invoiceAmount: string; invoiceDate: string; expectedCollection: string };
+  type BucketKey = "Current (0-30)" | "31-60" | "61-90" | "91-180" | ">180";
+
+  const [debtors, setDebtors] = useState<Debtor[]>([
+    { clientName: "Client A", invoiceAmount: "125000", invoiceDate: "2026-03-01", expectedCollection: "2026-04-30" },
+    { clientName: "Client B", invoiceAmount: "280000", invoiceDate: "2025-10-15", expectedCollection: "2026-05-15" },
+  ]);
+  const [result, setResult] = useState({
+    rows: [] as Array<{ clientName: string; invoiceAmount: number; invoiceDate: string; expectedCollection: string; daysOutstanding: number; bucket: BucketKey; provisionRate: number; provisionAmount: number }> ,
+    bucketTotals: {
+      "Current (0-30)": 0,
+      "31-60": 0,
+      "61-90": 0,
+      "91-180": 0,
+      ">180": 0,
+    } as Record<BucketKey, number>,
+    totalAmount: 0,
+    totalProvision: 0,
+  });
+
+  useEffect(() => {
+    const now = new Date();
+    const getBucket = (days: number): { bucket: BucketKey; rate: number } => {
+      if (days <= 30) return { bucket: "Current (0-30)", rate: 0 };
+      if (days <= 60) return { bucket: "31-60", rate: 0.05 };
+      if (days <= 90) return { bucket: "61-90", rate: 0.1 };
+      if (days <= 180) return { bucket: "91-180", rate: 0.25 };
+      return { bucket: ">180", rate: 0.5 };
+    };
+
+    const bucketTotals: Record<BucketKey, number> = {
+      "Current (0-30)": 0,
+      "31-60": 0,
+      "61-90": 0,
+      "91-180": 0,
+      ">180": 0,
+    };
+
+    const rows = debtors.map((debtor) => {
+      const amount = toNum(debtor.invoiceAmount);
+      const invoiceDate = debtor.invoiceDate ? new Date(debtor.invoiceDate) : now;
+      const daysOutstanding = Math.max(0, Math.floor((now.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const { bucket, rate } = getBucket(daysOutstanding);
+      const provisionAmount = amount * rate;
+      bucketTotals[bucket] += amount;
+
+      return {
+        clientName: debtor.clientName,
+        invoiceAmount: amount,
+        invoiceDate: debtor.invoiceDate,
+        expectedCollection: debtor.expectedCollection,
+        daysOutstanding,
+        bucket,
+        provisionRate: rate * 100,
+        provisionAmount,
+      };
+    });
+
+    const totalAmount = rows.reduce((sum, row) => sum + row.invoiceAmount, 0);
+    const totalProvision = rows.reduce((sum, row) => sum + row.provisionAmount, 0);
+    setResult({ rows, bucketTotals, totalAmount, totalProvision });
+  }, [debtors]);
+
+  const updateDebtor = (index: number, key: keyof Debtor, value: string) => {
+    setDebtors((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  };
+
+  const addDebtor = () => {
+    setDebtors((prev) => (prev.length >= 10 ? prev : [...prev, { clientName: "", invoiceAmount: "0", invoiceDate: "", expectedCollection: "" }]));
+  };
+
+  const bucketOrder: BucketKey[] = ["Current (0-30)", "31-60", "61-90", "91-180", ">180"];
+
+  return (
+    <CalculatorShell
+      title="Accounts Receivable Aging Analysis"
+      subtitle="Debtor aging buckets with provisioning and concentration view"
+      inputPanel={(
+        <div className="card-surface p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Debtors (Max 10)</h2>
+            <button onClick={addDebtor} className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white">Add Debtor</button>
+          </div>
+          {debtors.map((debtor, index) => (
+            <div key={`debtor-${index}`} className="grid grid-cols-1 sm:grid-cols-[1.2fr_120px_140px_140px] gap-2">
+              <input value={debtor.clientName} onChange={(e) => updateDebtor(index, "clientName", e.target.value)} className="glass-input h-10 px-3 text-sm" placeholder="Client Name" />
+              <input value={debtor.invoiceAmount} inputMode="decimal" onChange={(e) => updateDebtor(index, "invoiceAmount", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Amount" />
+              <input type="date" value={debtor.invoiceDate} onChange={(e) => updateDebtor(index, "invoiceDate", e.target.value)} className="glass-input h-10 px-3 text-sm" />
+              <input type="date" value={debtor.expectedCollection} onChange={(e) => updateDebtor(index, "expectedCollection", e.target.value)} className="glass-input h-10 px-3 text-sm" />
+            </div>
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Aging Table</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Client</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Invoice Amt</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Invoice Date</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Expected</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Days</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Bucket</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Prov %</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Provision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={`${row.clientName}-${index}`} className={cn(index % 2 ? "bg-white/[0.02]" : "", row.daysOutstanding > 90 ? "text-red-300" : row.daysOutstanding > 60 ? "text-warning" : row.daysOutstanding <= 30 ? "text-success" : "") }>
+                      <td className="px-5 py-2">{row.clientName || `Client ${index + 1}`}</td>
+                      <td className="px-2 py-2 text-right text-white">₹ {row.invoiceAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-2 text-right">{row.invoiceDate || "-"}</td>
+                      <td className="px-2 py-2 text-right">{row.expectedCollection || "-"}</td>
+                      <td className="px-2 py-2 text-right">{row.daysOutstanding.toLocaleString('en-IN')}</td>
+                      <td className="px-2 py-2 text-right">{row.bucket}</td>
+                      <td className="px-2 py-2 text-right">{formatPct(row.provisionRate)}</td>
+                      <td className="px-5 py-2 text-right text-white">₹ {row.provisionAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 text-sm text-secondary space-y-2">
+            {bucketOrder.map((bucket) => {
+              const amount = result.bucketTotals[bucket];
+              const pct = result.totalAmount > 0 ? (amount / result.totalAmount) * 100 : 0;
+              const barClass = bucket === "Current (0-30)" ? "bg-success" : bucket === "61-90" ? "bg-warning" : (bucket === "91-180" || bucket === ">180") ? "bg-red-400" : "bg-primary";
+              return (
+                <div key={bucket} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span>{bucket}</span>
+                    <span className="text-white">₹ {amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ({pct.toLocaleString('en-IN', { maximumFractionDigits: 1 })}%)</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className={cn("h-full rounded-full", barClass)} style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            <div>Total Provision: <span className="text-white font-semibold">₹ {result.totalProvision.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function TDS26ASCalc() {
+  type TdsEntry = { deductorName: string; section: string; tdsDeducted: string; incomeAmount: string; quarter: "Q1" | "Q2" | "Q3" | "Q4" };
+
+  const [entries, setEntries] = useState<TdsEntry[]>([
+    { deductorName: "ABC Ltd", section: "194J", tdsDeducted: "25000", incomeAmount: "250000", quarter: "Q1" },
+    { deductorName: "XYZ Pvt Ltd", section: "194C", tdsDeducted: "18000", incomeAmount: "900000", quarter: "Q2" },
+  ]);
+  const [result, setResult] = useState({
+    rows: [] as Array<{ deductorName: string; section: string; incomeAmount: number; tdsDeducted: number; quarter: string }> ,
+    totalIncome: 0,
+    totalTDS: 0,
+    taxLiability: 0,
+    netTaxPayable: 0,
+    refundDue: 0,
+    itrSuggestion: "",
+  });
+
+  useEffect(() => {
+    const rows = entries.map((entry) => ({
+      deductorName: entry.deductorName,
+      section: entry.section,
+      incomeAmount: toNum(entry.incomeAmount),
+      tdsDeducted: toNum(entry.tdsDeducted),
+      quarter: entry.quarter,
+    }));
+
+    const totalIncome = rows.reduce((sum, row) => sum + row.incomeAmount, 0);
+    const totalTDS = rows.reduce((sum, row) => sum + row.tdsDeducted, 0);
+    const baseTax = calculateSlabTax(Math.max(0, totalIncome), NEW_REGIME_SLABS).baseTax;
+    const rebate = totalIncome <= 700000 ? Math.min(baseTax, 25000) : 0;
+    const taxLiability = Math.max(0, baseTax - rebate) * 1.04;
+    const netTaxPayable = taxLiability - totalTDS;
+    const refundDue = netTaxPayable < 0 ? Math.abs(netTaxPayable) : 0;
+
+    const itrSuggestion = totalIncome <= 500000
+      ? "ITR-1 likely suitable (salary/one house property/other sources)."
+      : totalIncome <= 5000000
+        ? "Review ITR-2/ITR-3 based on capital gains/business income."
+        : "Use detailed audit-ready return workflow and verify all schedules.";
+
+    setResult({ rows, totalIncome, totalTDS, taxLiability, netTaxPayable, refundDue, itrSuggestion });
+  }, [entries]);
+
+  const updateEntry = (index: number, key: keyof TdsEntry, value: string) => {
+    setEntries((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  };
+
+  const addEntry = () => {
+    setEntries((prev) => (prev.length >= 10 ? prev : [...prev, { deductorName: "", section: "194J", tdsDeducted: "0", incomeAmount: "0", quarter: "Q1" }]));
+  };
+
+  return (
+    <CalculatorShell
+      title="TDS 26AS Reconciliation"
+      subtitle="Match deducted tax with computed annual tax liability"
+      inputPanel={(
+        <div className="card-surface p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">TDS Entries (Max 10)</h2>
+            <button onClick={addEntry} className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white">Add Entry</button>
+          </div>
+          {entries.map((entry, index) => (
+            <div key={`tds-${index}`} className="grid grid-cols-1 sm:grid-cols-[1.2fr_80px_120px_120px_80px] gap-2">
+              <input value={entry.deductorName} onChange={(e) => updateEntry(index, "deductorName", e.target.value)} className="glass-input h-10 px-3 text-sm" placeholder="Deductor" />
+              <input value={entry.section} onChange={(e) => updateEntry(index, "section", e.target.value)} className="glass-input h-10 px-3 text-sm text-center" placeholder="Section" />
+              <input value={entry.incomeAmount} inputMode="decimal" onChange={(e) => updateEntry(index, "incomeAmount", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Income" />
+              <input value={entry.tdsDeducted} inputMode="decimal" onChange={(e) => updateEntry(index, "tdsDeducted", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="TDS" />
+              <select value={entry.quarter} onChange={(e) => updateEntry(index, "quarter", e.target.value)} className="glass-input h-10 px-2 text-sm">
+                {(["Q1", "Q2", "Q3", "Q4"] as const).map((q) => (
+                  <option key={q} value={q}>{q}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">26AS-style Entries</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Deductor</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Section</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Income</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">TDS</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Quarter</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={`${row.deductorName}-${index}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.deductorName || `Deductor ${index + 1}`}</td>
+                      <td className="px-2 py-2 text-right">{row.section}</td>
+                      <td className="px-2 py-2 text-right">₹ {row.incomeAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-2 text-right">₹ {row.tdsDeducted.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td className="px-5 py-2 text-right">{row.quarter}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total Income" value={`₹ ${result.totalIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total TDS" value={`₹ ${result.totalTDS.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Tax Liability (New Regime)" value={`₹ ${result.taxLiability.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat
+              label={result.netTaxPayable >= 0 ? "Net Tax Payable" : "Refund Due"}
+              value={`₹ ${Math.abs(result.netTaxPayable).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`}
+              green={result.netTaxPayable < 0}
+            />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">ITR Suggestion: <span className="text-white">{result.itrSuggestion}</span></div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Download Form 26AS from TRACES portal.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function SalaryHikeCalc() {
+  const [currentCTC, setCurrentCTC] = useState("1200000");
+  const [hikePercent, setHikePercent] = useState("15");
+  const [currentBasicPercent, setCurrentBasicPercent] = useState("40");
+  const [hraPercent, setHraPercent] = useState("40");
+  const [currentPFEmployee, setCurrentPFEmployee] = useState("21600");
+  const [currentPFEmployer, setCurrentPFEmployer] = useState("21600");
+  const [result, setResult] = useState({
+    current: { ctc: 0, basic: 0, hra: 0, pfEmployee: 0, pfEmployer: 0, special: 0, gross: 0, takeHome: 0 },
+    revised: { ctc: 0, basic: 0, hra: 0, pfEmployee: 0, pfEmployer: 0, special: 0, gross: 0, takeHome: 0 },
+    increase: { ctc: 0, basic: 0, hra: 0, pfEmployee: 0, pfEmployer: 0, special: 0, gross: 0, takeHome: 0 },
+    hikeAmount: 0,
+    monthlyTakeHomeIncrease: 0,
+  });
+
+  useEffect(() => {
+    const ctc = toNum(currentCTC);
+    const hike = toNum(hikePercent) / 100;
+    const basicPct = toNum(currentBasicPercent) / 100;
+    const hraPct = toNum(hraPercent) / 100;
+    const currentPfEmp = toNum(currentPFEmployee);
+    const currentPfEr = toNum(currentPFEmployer);
+
+    const newCTC = ctc * (1 + hike);
+    const hikeAmount = newCTC - ctc;
+
+    const currentBasic = ctc * basicPct;
+    const currentHRA = currentBasic * hraPct;
+    const currentSpecial = Math.max(0, ctc - currentBasic - currentHRA - currentPfEr);
+    const currentGross = currentBasic + currentHRA + currentSpecial;
+    const currentBaseTax = calculateSlabTax(Math.max(0, ctc), NEW_REGIME_SLABS).baseTax;
+    const currentRebate = ctc <= 700000 ? Math.min(currentBaseTax, 25000) : 0;
+    const currentIncomeTax = Math.max(0, currentBaseTax - currentRebate) * 1.04;
+    const currentTakeHome = ctc - currentPfEmp - currentIncomeTax;
+
+    const newBasic = newCTC * basicPct;
+    const newHRA = newBasic * hraPct;
+    const newPFEmployee = Math.min(newBasic * 0.12, 1800) * 12;
+    const newPFEmployer = Math.min(newBasic * 0.12, 1800) * 12;
+    const newSpecialAllowance = Math.max(0, newCTC - newBasic - newHRA - newPFEmployer);
+    const newGross = newBasic + newHRA + newSpecialAllowance;
+    const newBaseTax = calculateSlabTax(Math.max(0, newCTC), NEW_REGIME_SLABS).baseTax;
+    const newRebate = newCTC <= 700000 ? Math.min(newBaseTax, 25000) : 0;
+    const incomeTaxQuickEstimate = Math.max(0, newBaseTax - newRebate) * 1.04;
+    const newTakeHome = newCTC - newPFEmployee - incomeTaxQuickEstimate;
+
+    const increase = {
+      ctc: newCTC - ctc,
+      basic: newBasic - currentBasic,
+      hra: newHRA - currentHRA,
+      pfEmployee: newPFEmployee - currentPfEmp,
+      pfEmployer: newPFEmployer - currentPfEr,
+      special: newSpecialAllowance - currentSpecial,
+      gross: newGross - currentGross,
+      takeHome: newTakeHome - currentTakeHome,
+    };
+
+    setResult({
+      current: { ctc, basic: currentBasic, hra: currentHRA, pfEmployee: currentPfEmp, pfEmployer: currentPfEr, special: currentSpecial, gross: currentGross, takeHome: currentTakeHome },
+      revised: { ctc: newCTC, basic: newBasic, hra: newHRA, pfEmployee: newPFEmployee, pfEmployer: newPFEmployer, special: newSpecialAllowance, gross: newGross, takeHome: newTakeHome },
+      increase,
+      hikeAmount,
+      monthlyTakeHomeIncrease: increase.takeHome / 12,
+    });
+  }, [currentCTC, hikePercent, currentBasicPercent, hraPercent, currentPFEmployee, currentPFEmployer]);
+
+  const componentRows = [
+    { key: "ctc", label: "CTC" },
+    { key: "basic", label: "Basic" },
+    { key: "hra", label: "HRA" },
+    { key: "pfEmployee", label: "PF Employee" },
+    { key: "pfEmployer", label: "PF Employer" },
+    { key: "special", label: "Special Allowance" },
+    { key: "gross", label: "Gross" },
+    { key: "takeHome", label: "Take Home" },
+  ] as const;
+
+  return (
+    <CalculatorShell
+      title="Salary Hike & CTC Revision Calculator"
+      subtitle="Compare current vs revised structure with component-level increase"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Current CTC" value={currentCTC} onChange={setCurrentCTC} />
+          <NumberInput label="Hike (%)" value={hikePercent} onChange={setHikePercent} />
+          <NumberInput label="Current Basic (% of CTC)" value={currentBasicPercent} onChange={setCurrentBasicPercent} />
+          <NumberInput label="HRA (% of Basic)" value={hraPercent} onChange={setHraPercent} />
+          <MoneyInput label="Current PF Employee (Annual)" value={currentPFEmployee} onChange={setCurrentPFEmployee} />
+          <MoneyInput label="Current PF Employer (Annual)" value={currentPFEmployer} onChange={setCurrentPFEmployer} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Hike Amount" value={`₹ ${result.hikeAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Monthly Take-home Increase" value={`₹ ${result.monthlyTakeHomeIncrease.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Current vs New</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Component</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Current</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Revised</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Increase</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">Increase %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {componentRows.map((row, index) => {
+                    const currentValue = result.current[row.key];
+                    const revisedValue = result.revised[row.key];
+                    const increaseValue = result.increase[row.key];
+                    const increasePct = currentValue > 0 ? (increaseValue / currentValue) * 100 : 0;
+                    return (
+                      <tr key={row.key} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                        <td className="px-5 py-2 text-secondary">{row.label}</td>
+                        <td className="px-2 py-2 text-right">₹ {currentValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-2 text-right">₹ {revisedValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-2 text-right">₹ {increaseValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-5 py-2 text-right">{increasePct.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function GSTAnnualReturnCalc() {
+  const [outwardSupplies, setOutwardSupplies] = useState("25000000");
+  const [outwardIGST, setOutwardIGST] = useState("900000");
+  const [outwardCGST, setOutwardCGST] = useState("450000");
+  const [outwardSGST, setOutwardSGST] = useState("450000");
+
+  const [availedIGST, setAvailedIGST] = useState("600000");
+  const [availedCGST, setAvailedCGST] = useState("300000");
+  const [availedSGST, setAvailedSGST] = useState("300000");
+  const [reversedIGST, setReversedIGST] = useState("50000");
+  const [reversedCGST, setReversedCGST] = useState("25000");
+  const [reversedSGST, setReversedSGST] = useState("25000");
+
+  const [cashIGST, setCashIGST] = useState("120000");
+  const [cashCGST, setCashCGST] = useState("60000");
+  const [cashSGST, setCashSGST] = useState("60000");
+  const [itcUsedIGST, setItcUsedIGST] = useState("730000");
+  const [itcUsedCGST, setItcUsedCGST] = useState("365000");
+  const [itcUsedSGST, setItcUsedSGST] = useState("365000");
+
+  const [dueDate, setDueDate] = useState("2026-12-31");
+  const [filingDate, setFilingDate] = useState("2027-01-10");
+
+  const [result, setResult] = useState({
+    outwardTax: { igst: 0, cgst: 0, sgst: 0 },
+    netITC: { igst: 0, cgst: 0, sgst: 0 },
+    taxLiability: 0,
+    netITCTotal: 0,
+    netTaxPayable: 0,
+    cashPaid: 0,
+    itcUsed: 0,
+    reconciliationDiff: 0,
+    daysLate: 0,
+    lateFee: 0,
+  });
+
+  useEffect(() => {
+    const outward = {
+      igst: toNum(outwardIGST),
+      cgst: toNum(outwardCGST),
+      sgst: toNum(outwardSGST),
+    };
+    const netITC = {
+      igst: Math.max(0, toNum(availedIGST) - toNum(reversedIGST)),
+      cgst: Math.max(0, toNum(availedCGST) - toNum(reversedCGST)),
+      sgst: Math.max(0, toNum(availedSGST) - toNum(reversedSGST)),
+    };
+
+    const taxLiability = outward.igst + outward.cgst + outward.sgst;
+    const netITCTotal = netITC.igst + netITC.cgst + netITC.sgst;
+    const netTaxPayable = taxLiability - netITCTotal;
+    const cashPaid = toNum(cashIGST) + toNum(cashCGST) + toNum(cashSGST);
+    const itcUsed = toNum(itcUsedIGST) + toNum(itcUsedCGST) + toNum(itcUsedSGST);
+    const reconciliationDiff = netTaxPayable - cashPaid - itcUsed;
+
+    const due = new Date(dueDate);
+    const filed = new Date(filingDate);
+    const daysLate = Math.max(0, Math.ceil((filed.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
+    const lateFee = daysLate * 200;
+
+    setResult({ outwardTax: outward, netITC, taxLiability, netITCTotal, netTaxPayable, cashPaid, itcUsed, reconciliationDiff, daysLate, lateFee });
+  }, [outwardIGST, outwardCGST, outwardSGST, availedIGST, availedCGST, availedSGST, reversedIGST, reversedCGST, reversedSGST, cashIGST, cashCGST, cashSGST, itcUsedIGST, itcUsedCGST, itcUsedSGST, dueDate, filingDate]);
+
+  return (
+    <CalculatorShell
+      title="GSTR-9 Annual Return Summary"
+      subtitle="Outward tax, ITC reconciliation and annual payable check"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Total Outward Supplies (Table 4)" value={outwardSupplies} onChange={setOutwardSupplies} />
+
+          <Field label="Tax Paid on Outward">
+            <div className="grid grid-cols-3 gap-2">
+              <input value={outwardIGST} onChange={(e) => setOutwardIGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="IGST" />
+              <input value={outwardCGST} onChange={(e) => setOutwardCGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="CGST" />
+              <input value={outwardSGST} onChange={(e) => setOutwardSGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="SGST" />
+            </div>
+          </Field>
+
+          <Field label="ITC Availed">
+            <div className="grid grid-cols-3 gap-2">
+              <input value={availedIGST} onChange={(e) => setAvailedIGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="IGST" />
+              <input value={availedCGST} onChange={(e) => setAvailedCGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="CGST" />
+              <input value={availedSGST} onChange={(e) => setAvailedSGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="SGST" />
+            </div>
+          </Field>
+
+          <Field label="ITC Reversed">
+            <div className="grid grid-cols-3 gap-2">
+              <input value={reversedIGST} onChange={(e) => setReversedIGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="IGST" />
+              <input value={reversedCGST} onChange={(e) => setReversedCGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="CGST" />
+              <input value={reversedSGST} onChange={(e) => setReversedSGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="SGST" />
+            </div>
+          </Field>
+
+          <Field label="Tax Paid Through Cash Ledger">
+            <div className="grid grid-cols-3 gap-2">
+              <input value={cashIGST} onChange={(e) => setCashIGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="IGST" />
+              <input value={cashCGST} onChange={(e) => setCashCGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="CGST" />
+              <input value={cashSGST} onChange={(e) => setCashSGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="SGST" />
+            </div>
+          </Field>
+
+          <Field label="Tax Paid Through ITC Ledger">
+            <div className="grid grid-cols-3 gap-2">
+              <input value={itcUsedIGST} onChange={(e) => setItcUsedIGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="IGST" />
+              <input value={itcUsedCGST} onChange={(e) => setItcUsedCGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="CGST" />
+              <input value={itcUsedSGST} onChange={(e) => setItcUsedSGST(e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="SGST" />
+            </div>
+          </Field>
+
+          <Field label="Due Date / Filing Date">
+            <div className="grid grid-cols-2 gap-2">
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="glass-input h-10 px-3 text-sm" />
+              <input type="date" value={filingDate} onChange={(e) => setFilingDate(e.target.value)} className="glass-input h-10 px-3 text-sm" />
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">GSTR-9 Summary</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr><td className="px-5 py-2 text-secondary">Table 4 Outward Supplies</td><td className="px-5 py-2 text-right">₹ {toNum(outwardSupplies).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Tax Liability (IGST+CGST+SGST)</td><td className="px-5 py-2 text-right">₹ {result.taxLiability.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Net ITC (Availed - Reversed)</td><td className="px-5 py-2 text-right">₹ {result.netITCTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Net Tax Payable</td><td className="px-5 py-2 text-right">₹ {result.netTaxPayable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Paid via Cash Ledger</td><td className="px-5 py-2 text-right">₹ {result.cashPaid.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Paid via ITC Ledger</td><td className="px-5 py-2 text-right">₹ {result.itcUsed.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr className="border-t border-primary/20"><td className="px-5 py-2.5 font-bold">Reconciliation Difference</td><td className="px-5 py-2.5 text-right font-bold">₹ {result.reconciliationDiff.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card-surface p-4 text-sm text-secondary space-y-1">
+            <div>ITC Reconciliation (IGST/CGST/SGST): <span className="text-white">₹ {result.netITC.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })} / ₹ {result.netITC.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })} / ₹ {result.netITC.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span></div>
+            <div>Late Fee: <span className="text-white font-medium">₹ {result.lateFee.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span> ({result.daysLate.toLocaleString('en-IN')} days late)</div>
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">GSTR-9 due date: December 31 of following FY.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function CryptoTaxCalc() {
+  type VdaTx = { assetName: string; buyPrice: string; sellPrice: string; quantity: string; transactionDate: string };
+
+  const [transactions, setTransactions] = useState<VdaTx[]>([
+    { assetName: "BTC", buyPrice: "4500000", sellPrice: "5200000", quantity: "0.2", transactionDate: "2026-02-18" },
+    { assetName: "ETH", buyPrice: "180000", sellPrice: "150000", quantity: "1.5", transactionDate: "2026-03-04" },
+  ]);
+  const [result, setResult] = useState({
+    rows: [] as Array<{ assetName: string; quantity: number; saleValue: number; gain: number; tax: number; tds: number; transactionDate: string }> ,
+    totalGains: 0,
+    totalLosses: 0,
+    totalTax: 0,
+    totalTDS: 0,
+    netTaxPayable: 0,
+  });
+
+  useEffect(() => {
+    const rows = transactions.map((tx) => {
+      const buy = toNum(tx.buyPrice);
+      const sell = toNum(tx.sellPrice);
+      const qty = toNum(tx.quantity);
+      const saleValue = sell * qty;
+      const gain = (sell - buy) * qty;
+      const tax = Math.max(0, gain) * 0.3;
+      const tds = saleValue > 50000 ? saleValue * 0.01 : 0;
+      return { assetName: tx.assetName, quantity: qty, saleValue, gain, tax, tds, transactionDate: tx.transactionDate };
+    });
+
+    const totalGains = rows.reduce((sum, row) => sum + Math.max(0, row.gain), 0);
+    const totalLosses = rows.reduce((sum, row) => sum + Math.min(0, row.gain), 0);
+    const totalTax = totalGains * 0.3;
+    const totalTDS = rows.reduce((sum, row) => sum + row.tds, 0);
+    const netTaxPayable = totalTax - totalTDS;
+
+    setResult({ rows, totalGains, totalLosses, totalTax, totalTDS, netTaxPayable });
+  }, [transactions]);
+
+  const updateTx = (index: number, key: keyof VdaTx, value: string) => {
+    setTransactions((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+  };
+
+  const addTransaction = () => {
+    setTransactions((prev) => (prev.length >= 8 ? prev : [...prev, { assetName: "", buyPrice: "0", sellPrice: "0", quantity: "0", transactionDate: "" }]));
+  };
+
+  return (
+    <CalculatorShell
+      title="Crypto & VDA Tax Calculator (India)"
+      subtitle="30% gain tax + 1% TDS logic under VDA provisions"
+      inputPanel={(
+        <div className="card-surface p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-tertiary">Transactions (Max 8)</h2>
+            <button onClick={addTransaction} className="px-3 py-1.5 text-xs rounded-md border border-white/10 text-secondary hover:text-white">Add Txn</button>
+          </div>
+          {transactions.map((tx, index) => (
+            <div key={`vda-${index}`} className="grid grid-cols-1 sm:grid-cols-[90px_120px_120px_90px_140px] gap-2">
+              <input value={tx.assetName} onChange={(e) => updateTx(index, "assetName", e.target.value)} className="glass-input h-10 px-3 text-sm" placeholder="Asset" />
+              <input value={tx.buyPrice} inputMode="decimal" onChange={(e) => updateTx(index, "buyPrice", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Buy" />
+              <input value={tx.sellPrice} inputMode="decimal" onChange={(e) => updateTx(index, "sellPrice", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Sell" />
+              <input value={tx.quantity} inputMode="decimal" onChange={(e) => updateTx(index, "quantity", e.target.value.replace(/[^0-9.]/g, ""))} className="glass-input h-10 px-3 text-sm text-right" placeholder="Qty" />
+              <input type="date" value={tx.transactionDate} onChange={(e) => updateTx(index, "transactionDate", e.target.value)} className="glass-input h-10 px-3 text-sm" />
+            </div>
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Transaction-wise Tax View</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-tertiary">
+                    <th className="text-left font-medium px-5 py-2 bg-primary/10">Asset</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Qty</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Sale Value</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Gain/Loss</th>
+                    <th className="text-right font-medium px-2 py-2 bg-primary/10">Tax 30%</th>
+                    <th className="text-right font-medium px-5 py-2 bg-primary/10">TDS 1%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr key={`${row.assetName}-${index}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{row.assetName || `VDA ${index + 1}`}</td>
+                      <td className="px-2 py-2 text-right">{row.quantity.toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
+                      <td className="px-2 py-2 text-right">₹ {row.saleValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td className={cn("px-2 py-2 text-right", row.gain >= 0 ? "text-success" : "text-red-300")}>₹ {row.gain.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-2 text-right">₹ {row.tax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td className="px-5 py-2 text-right">₹ {row.tds.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total Gains (Taxable)" value={`₹ ${result.totalGains.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Losses (Not Set-off)" value={`₹ ${Math.abs(result.totalLosses).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Tax @30%" value={`₹ ${result.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total TDS Deducted" value={`₹ ${result.totalTDS.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Final Payable / (Refund)" value={`₹ ${result.netTaxPayable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green={result.netTaxPayable <= 0} />
+          </div>
+
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Losses from VDA cannot be set off against any other income under Section 115BBH.</div>
         </div>
       )}
     />
