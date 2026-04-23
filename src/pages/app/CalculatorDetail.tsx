@@ -89,6 +89,11 @@ const CALC_REGISTRY: Record<string, CalculatorComponent> = {
   "salary-hike": SalaryHikeCalc,
   "gst-annual-return": GSTAnnualReturnCalc,
   "crypto-tax": CryptoTaxCalc,
+  "marginal-relief": MarginalReliefCalc,
+  "presumptive-tax": PresumptiveTaxCalc,
+  "employees-stock": ESOPCalc,
+  "foreign-income": ForeignIncomeCalc,
+  "audit-checklist": AuditChecklistCalc,
 };
 
 const titleMap: Record<string, string> = {
@@ -172,6 +177,11 @@ const titleMap: Record<string, string> = {
   "salary-hike": "Salary Hike & CTC Revision Calculator",
   "gst-annual-return": "GSTR-9 Annual Return Summary",
   "crypto-tax": "Crypto & VDA Tax Calculator (India)",
+  "marginal-relief": "Marginal Relief & Surcharge Calculator",
+  "presumptive-tax": "Presumptive Tax Calculator (44AD/44ADA/44AE)",
+  "employees-stock": "ESOP Tax Calculator",
+  "foreign-income": "Foreign Income & DTAA Calculator",
+  "audit-checklist": "Statutory Audit Checklist Score",
 };
 
 const categoryMap: Record<string, string> = {
@@ -255,6 +265,11 @@ const categoryMap: Record<string, string> = {
   "salary-hike": "payroll",
   "gst-annual-return": "gst",
   "crypto-tax": "tax",
+  "marginal-relief": "tax",
+  "presumptive-tax": "tax",
+  "employees-stock": "tax",
+  "foreign-income": "tax",
+  "audit-checklist": "audit",
 };
 
 const WDV_DEFAULT_RATES: Record<string, number> = {
@@ -10025,6 +10040,584 @@ function CryptoTaxCalc() {
           </div>
 
           <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Losses from VDA cannot be set off against any other income under Section 115BBH.</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function MarginalReliefCalc() {
+  const [totalIncome, setTotalIncome] = useState("5050000");
+  const [regime, setRegime] = useState<"new" | "old">("new");
+  const [result, setResult] = useState({
+    baseTax: 0,
+    surchargeRate: 0,
+    surchargeAmount: 0,
+    grossTax: 0,
+    thresholdUsed: 0,
+    taxAtThreshold: 0,
+    excessIncome: 0,
+    marginalRelief: 0,
+    netSurcharge: 0,
+    cessAmount: 0,
+    totalTax: 0,
+    effectiveRate: 0,
+    reliefApplied: false,
+  });
+
+  useEffect(() => {
+    const income = toNum(totalIncome);
+    const slabs = regime === "new" ? NEW_REGIME_SLABS : OLD_REGIME_SLABS;
+    const baseTax = calculateSlabTax(Math.max(0, income), slabs).baseTax;
+
+    const thresholds = regime === "new"
+      ? [5000000, 10000000, 20000000]
+      : [5000000, 10000000, 20000000, 50000000];
+
+    let surchargeRate = 0;
+    if (income > 50000000) {
+      surchargeRate = regime === "new" ? 25 : 37;
+    } else if (income > 20000000) {
+      surchargeRate = regime === "new" ? 25 : 25;
+    } else if (income > 10000000) {
+      surchargeRate = 15;
+    } else if (income > 5000000) {
+      surchargeRate = 10;
+    }
+
+    const surchargeAmount = baseTax * surchargeRate / 100;
+    const grossTax = baseTax + surchargeAmount;
+
+    let thresholdUsed = 0;
+    for (let i = thresholds.length - 1; i >= 0; i -= 1) {
+      if (income > thresholds[i]) {
+        thresholdUsed = thresholds[i];
+        break;
+      }
+    }
+
+    const taxAtThreshold = thresholdUsed > 0 ? calculateSlabTax(thresholdUsed, slabs).baseTax : 0;
+    const excessIncome = thresholdUsed > 0 ? income - thresholdUsed : 0;
+    const reliefRaw = thresholdUsed > 0 ? grossTax - (taxAtThreshold + excessIncome) : 0;
+    const marginalRelief = Math.max(0, reliefRaw);
+    const netSurcharge = Math.max(0, surchargeAmount - marginalRelief);
+    const cessAmount = (baseTax + netSurcharge) * 0.04;
+    const totalTax = baseTax + netSurcharge + cessAmount;
+    const effectiveRate = income > 0 ? (totalTax / income) * 100 : 0;
+
+    setResult({
+      baseTax,
+      surchargeRate,
+      surchargeAmount,
+      grossTax,
+      thresholdUsed,
+      taxAtThreshold,
+      excessIncome,
+      marginalRelief,
+      netSurcharge,
+      cessAmount,
+      totalTax,
+      effectiveRate,
+      reliefApplied: marginalRelief > 0,
+    });
+  }, [totalIncome, regime]);
+
+  return (
+    <CalculatorShell
+      title="Marginal Relief & Surcharge Calculator"
+      subtitle="Surcharge impact with threshold-based marginal relief check"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Total Income" value={totalIncome} onChange={setTotalIncome} />
+          <Field label="Regime">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["new", "old"] as const).map((r) => (
+                <button key={r} onClick={() => setRegime(r)} className={cn("py-2 text-xs font-medium rounded-md transition-all uppercase", regime === r ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{r}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Step-by-step Computation</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr><td className="px-5 py-2 text-secondary">Base Tax</td><td className="px-5 py-2 text-right">₹ {result.baseTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Surcharge Rate</td><td className="px-5 py-2 text-right">{result.surchargeRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Surcharge Amount</td><td className="px-5 py-2 text-right">₹ {result.surchargeAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Gross Tax (Tax + Surcharge)</td><td className="px-5 py-2 text-right">₹ {result.grossTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Threshold Used</td><td className="px-5 py-2 text-right">₹ {result.thresholdUsed.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Tax at Threshold</td><td className="px-5 py-2 text-right">₹ {result.taxAtThreshold.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Excess Income over Threshold</td><td className="px-5 py-2 text-right">₹ {result.excessIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Marginal Relief</td><td className="px-5 py-2 text-right">₹ {result.marginalRelief.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Net Surcharge</td><td className="px-5 py-2 text-right">₹ {result.netSurcharge.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr><td className="px-5 py-2 text-secondary">Cess @4%</td><td className="px-5 py-2 text-right">₹ {result.cessAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                  <tr className="border-t border-primary/20"><td className="px-5 py-2.5 font-bold">Total Tax</td><td className="px-5 py-2.5 text-right font-bold">₹ {result.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Effective Tax Rate" value={`${result.effectiveRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="Marginal Relief Applied" value={result.reliefApplied ? `Yes (₹ ${result.marginalRelief.toLocaleString('en-IN', { maximumFractionDigits: 2 })})` : "No"} green={result.reliefApplied} />
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function PresumptiveTaxCalc() {
+  const [schemeType, setSchemeType] = useState<"44AD" | "44ADA" | "44AE">("44AD");
+  const [grossReceipts, setGrossReceipts] = useState("4800000");
+  const [paymentMode, setPaymentMode] = useState<"cash" | "digital">("digital");
+  const [professionType, setProfessionType] = useState<"Doctor" | "Lawyer" | "CA" | "Engineer" | "Architect">("CA");
+  const [actualProfit, setActualProfit] = useState("650000");
+  const [vehicleCount, setVehicleCount] = useState("3");
+  const [monthsOwned, setMonthsOwned] = useState("12");
+  const [result, setResult] = useState({
+    presumptiveRate: 0,
+    presumptiveIncome: 0,
+    taxLiability: 0,
+    effectiveTaxRate: 0,
+    eligible: false,
+    eligibilityMessage: "",
+    actualProfitTax: 0,
+    taxSavingVsActual: 0,
+  });
+
+  useEffect(() => {
+    const receipts = toNum(grossReceipts);
+    const actual = toNum(actualProfit);
+    const vehicles = Math.max(0, Math.floor(toNum(vehicleCount)));
+    const months = Math.max(0, Math.floor(toNum(monthsOwned)));
+
+    let presumptiveRate = 0;
+    let presumptiveIncome = 0;
+    let eligible = false;
+    let eligibilityMessage = "";
+
+    if (schemeType === "44AD") {
+      presumptiveRate = paymentMode === "digital" ? 6 : 8;
+      presumptiveIncome = receipts * presumptiveRate / 100;
+      eligible = receipts <= 30000000;
+      eligibilityMessage = eligible ? "Eligible under 44AD (turnover within ₹3Cr)." : "Not eligible under 44AD (turnover exceeds ₹3Cr).";
+    } else if (schemeType === "44ADA") {
+      presumptiveRate = 50;
+      presumptiveIncome = receipts * 0.5;
+      eligible = receipts <= 7500000;
+      eligibilityMessage = eligible
+        ? `Eligible under 44ADA for ${professionType}.`
+        : "Not eligible under 44ADA (gross receipts exceed ₹75L).";
+    } else {
+      presumptiveRate = 0;
+      presumptiveIncome = vehicles * months * 7500;
+      eligible = vehicles > 0 && months > 0;
+      eligibilityMessage = eligible ? "Calculated under 44AE at ₹7,500 per vehicle per month." : "Enter vehicle count and months for 44AE.";
+    }
+
+    const baseTax = calculateSlabTax(Math.max(0, presumptiveIncome), NEW_REGIME_SLABS).baseTax;
+    const rebate = presumptiveIncome <= 700000 ? Math.min(baseTax, 25000) : 0;
+    const taxLiability = Math.max(0, baseTax - rebate) * 1.04;
+
+    const actualBaseTax = calculateSlabTax(Math.max(0, actual), NEW_REGIME_SLABS).baseTax;
+    const actualRebate = actual <= 700000 ? Math.min(actualBaseTax, 25000) : 0;
+    const actualProfitTax = Math.max(0, actualBaseTax - actualRebate) * 1.04;
+
+    const effectiveTaxRate = receipts > 0 ? (taxLiability / receipts) * 100 : 0;
+    const taxSavingVsActual = actualProfitTax - taxLiability;
+
+    setResult({ presumptiveRate, presumptiveIncome, taxLiability, effectiveTaxRate, eligible, eligibilityMessage, actualProfitTax, taxSavingVsActual });
+  }, [schemeType, grossReceipts, paymentMode, professionType, actualProfit, vehicleCount, monthsOwned]);
+
+  return (
+    <CalculatorShell
+      title="Presumptive Tax Calculator (44AD/44ADA/44AE)"
+      subtitle="Presumptive income, eligibility and tax comparison with actual profit"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <Field label="Scheme Type">
+            <select value={schemeType} onChange={(e) => setSchemeType(e.target.value as "44AD" | "44ADA" | "44AE")} className="glass-input w-full h-11 px-3 text-sm">
+              <option value="44AD">44AD Business</option>
+              <option value="44ADA">44ADA Profession</option>
+              <option value="44AE">44AE Transport</option>
+            </select>
+          </Field>
+          <MoneyInput label="Gross Receipts / Turnover" value={grossReceipts} onChange={setGrossReceipts} />
+          {schemeType === "44AD" && (
+            <Field label="Payment Mode">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+                {(["cash", "digital"] as const).map((m) => (
+                  <button key={m} onClick={() => setPaymentMode(m)} className={cn("py-2 text-xs font-medium rounded-md transition-all capitalize", paymentMode === m ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{m}</button>
+                ))}
+              </div>
+            </Field>
+          )}
+          {schemeType === "44ADA" && (
+            <Field label="Profession Type">
+              <select value={professionType} onChange={(e) => setProfessionType(e.target.value as "Doctor" | "Lawyer" | "CA" | "Engineer" | "Architect")} className="glass-input w-full h-11 px-3 text-sm">
+                {(["Doctor", "Lawyer", "CA", "Engineer", "Architect"] as const).map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {schemeType === "44AE" && (
+            <>
+              <NumberInput label="Number of Vehicles" value={vehicleCount} onChange={setVehicleCount} />
+              <NumberInput label="Months Held" value={monthsOwned} onChange={setMonthsOwned} />
+            </>
+          )}
+          <MoneyInput label="Actual Profit (Optional for comparison)" value={actualProfit} onChange={setActualProfit} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Presumptive Rate" value={schemeType === '44AE' ? 'As per vehicle-month formula' : `${result.presumptiveRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="Presumptive Income" value={`₹ ${result.presumptiveIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Tax Liability" value={`₹ ${result.taxLiability.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Effective Tax Rate" value={`${result.effectiveTaxRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} />
+            <MiniStat label="Tax on Actual Profit" value={`₹ ${result.actualProfitTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Difference vs Actual" value={`₹ ${result.taxSavingVsActual.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green={result.taxSavingVsActual > 0} />
+          </div>
+          <div className={cn("card-surface p-4 border text-sm", result.eligible ? "border-success/40 text-success" : "border-red-400/40 text-red-300")}>{result.eligibilityMessage}</div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Benefit: no books of accounts required, no audit required (subject to conditions).</div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ESOPCalc() {
+  const [grantPrice, setGrantPrice] = useState("120");
+  const [vestingPrice, setVestingPrice] = useState("450");
+  const [exercisePrice, setExercisePrice] = useState("200");
+  const [currentFMV, setCurrentFMV] = useState("600");
+  const [numberOfShares, setNumberOfShares] = useState("5000");
+  const [employmentType, setEmploymentType] = useState<"listed" | "unlisted">("listed");
+  const [holdingPeriodAfterExercise, setHoldingPeriodAfterExercise] = useState("18");
+  const [result, setResult] = useState({
+    perquisiteValue: 0,
+    perquisiteTaxAtVesting: 0,
+    capitalGainAtSale: 0,
+    capitalGainTax: 0,
+    totalTax: 0,
+    netProfit: 0,
+    gainType: "",
+  });
+
+  useEffect(() => {
+    const grant = toNum(grantPrice);
+    const vest = toNum(vestingPrice);
+    const exercise = toNum(exercisePrice);
+    const sale = toNum(currentFMV);
+    const shares = toNum(numberOfShares);
+    const holdingMonths = Math.max(0, Math.floor(toNum(holdingPeriodAfterExercise)));
+
+    const perquisiteValue = Math.max(0, (vest - grant) * shares);
+    const perquisiteTaxAtVesting = perquisiteValue * 0.3;
+
+    const capitalGainAtSale = (sale - exercise) * shares;
+    let capitalGainTax = 0;
+    let gainType = "";
+
+    if (employmentType === "listed") {
+      if (holdingMonths > 12) {
+        gainType = "LTCG @12.5% above ₹1.25L";
+        capitalGainTax = Math.max(0, capitalGainAtSale - 125000) * 0.125;
+      } else {
+        gainType = "STCG @20%";
+        capitalGainTax = Math.max(0, capitalGainAtSale) * 0.2;
+      }
+    } else if (holdingMonths > 24) {
+      gainType = "LTCG @12.5% (unlisted)";
+      capitalGainTax = Math.max(0, capitalGainAtSale) * 0.125;
+    } else {
+      gainType = "STCG at slab (assumed 30%)";
+      capitalGainTax = Math.max(0, capitalGainAtSale) * 0.3;
+    }
+
+    const totalTax = perquisiteTaxAtVesting + capitalGainTax;
+    const netProfit = (sale - grant) * shares - totalTax;
+
+    setResult({ perquisiteValue, perquisiteTaxAtVesting, capitalGainAtSale, capitalGainTax, totalTax, netProfit, gainType });
+  }, [grantPrice, vestingPrice, exercisePrice, currentFMV, numberOfShares, employmentType, holdingPeriodAfterExercise]);
+
+  return (
+    <CalculatorShell
+      title="ESOP Tax Calculator"
+      subtitle="Perquisite tax at vesting and capital gains tax at sale"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Grant Price" value={grantPrice} onChange={setGrantPrice} />
+          <MoneyInput label="Vesting Price (FMV on vesting)" value={vestingPrice} onChange={setVestingPrice} />
+          <MoneyInput label="Exercise Price" value={exercisePrice} onChange={setExercisePrice} />
+          <MoneyInput label="Current FMV / Sale Price" value={currentFMV} onChange={setCurrentFMV} />
+          <NumberInput label="Number of Shares" value={numberOfShares} onChange={setNumberOfShares} />
+          <Field label="Company Type">
+            <div className="grid grid-cols-2 p-1 rounded-lg bg-card-elevated border border-white/10">
+              {(["listed", "unlisted"] as const).map((t) => (
+                <button key={t} onClick={() => setEmploymentType(t)} className={cn("py-2 text-xs font-medium rounded-md transition-all capitalize", employmentType === t ? "bg-gradient-orange text-white glow-orange" : "text-secondary hover:text-white")}>{t}</button>
+              ))}
+            </div>
+          </Field>
+          <NumberInput label="Holding Period After Exercise (Months)" value={holdingPeriodAfterExercise} onChange={setHoldingPeriodAfterExercise} />
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Perquisite Value" value={`₹ ${result.perquisiteValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Perquisite Tax @30%" value={`₹ ${result.perquisiteTaxAtVesting.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Capital Gain at Sale" value={`₹ ${result.capitalGainAtSale.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Capital Gain Tax" value={`₹ ${result.capitalGainTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Total Tax" value={`₹ ${result.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Net Profit" value={`₹ ${result.netProfit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green={result.netProfit > 0} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">Capital Gains Rule Applied: <span className="text-white">{result.gainType}</span></div>
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Timeline</div>
+            <div className="grid grid-cols-4 gap-2 text-xs">
+              {[
+                "Grant",
+                "Vest",
+                "Exercise",
+                "Sale",
+              ].map((item, index) => (
+                <div key={item} className="p-3 rounded-md border border-white/10 bg-card-elevated text-center">
+                  <div className="text-tertiary">Step {index + 1}</div>
+                  <div className="mt-1 text-white font-medium">{item}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    />
+  );
+}
+
+function ForeignIncomeCalc() {
+  const [indianIncome, setIndianIncome] = useState("1800000");
+  const [foreignIncome, setForeignIncome] = useState("600000");
+  const [foreignTaxPaid, setForeignTaxPaid] = useState("90000");
+  const [sourceCountry, setSourceCountry] = useState<"USA" | "UK" | "UAE" | "Germany" | "Singapore" | "Other">("USA");
+  const [foreignIncomeType, setForeignIncomeType] = useState<"Salary" | "Business" | "Dividend" | "Interest">("Dividend");
+  const [result, setResult] = useState({
+    totalWorldIncome: 0,
+    indianTax: 0,
+    foreignTaxCredit: 0,
+    netTaxPayable: 0,
+    reliefUnderDTAA: 0,
+    applicableDTAARate: 0,
+  });
+
+  useEffect(() => {
+    const india = toNum(indianIncome);
+    const foreign = toNum(foreignIncome);
+    const foreignTax = toNum(foreignTaxPaid);
+    const totalWorldIncome = india + foreign;
+
+    const baseTax = calculateSlabTax(Math.max(0, totalWorldIncome), NEW_REGIME_SLABS).baseTax;
+    const rebate = totalWorldIncome <= 700000 ? Math.min(baseTax, 25000) : 0;
+    const indianTax = Math.max(0, baseTax - rebate) * 1.04;
+
+    const dtaaRates: Record<string, Partial<Record<"Dividend" | "Interest" | "Salary" | "Business", number>>> = {
+      USA: { Dividend: 15, Interest: 15 },
+      UK: { Dividend: 15, Interest: 15 },
+      UAE: {},
+      Germany: { Dividend: 10, Interest: 10 },
+      Singapore: { Dividend: 15, Interest: 15 },
+      Other: {},
+    };
+
+    const applicableDTAARate = dtaaRates[sourceCountry]?.[foreignIncomeType] ?? 0;
+    const proportionalIndianTax = totalWorldIncome > 0 ? indianTax * (foreign / totalWorldIncome) : 0;
+    const foreignTaxCredit = Math.min(foreignTax, proportionalIndianTax);
+    const netTaxPayable = Math.max(0, indianTax - foreignTaxCredit);
+
+    setResult({
+      totalWorldIncome,
+      indianTax,
+      foreignTaxCredit,
+      netTaxPayable,
+      reliefUnderDTAA: foreignTaxCredit,
+      applicableDTAARate,
+    });
+  }, [indianIncome, foreignIncome, foreignTaxPaid, sourceCountry, foreignIncomeType]);
+
+  return (
+    <CalculatorShell
+      title="Foreign Income & DTAA Calculator"
+      subtitle="Foreign tax credit computation with country-level DTAA reference"
+      inputPanel={(
+        <div className="card-surface p-6 space-y-5">
+          <MoneyInput label="Indian Income" value={indianIncome} onChange={setIndianIncome} />
+          <MoneyInput label="Foreign Income" value={foreignIncome} onChange={setForeignIncome} />
+          <MoneyInput label="Foreign Tax Paid" value={foreignTaxPaid} onChange={setForeignTaxPaid} />
+          <Field label="Source Country">
+            <select value={sourceCountry} onChange={(e) => setSourceCountry(e.target.value as "USA" | "UK" | "UAE" | "Germany" | "Singapore" | "Other")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["USA", "UK", "UAE", "Germany", "Singapore", "Other"] as const).map((country) => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Foreign Income Type">
+            <select value={foreignIncomeType} onChange={(e) => setForeignIncomeType(e.target.value as "Salary" | "Business" | "Dividend" | "Interest")} className="glass-input w-full h-11 px-3 text-sm">
+              {(["Salary", "Business", "Dividend", "Interest"] as const).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Total World Income" value={`₹ ${result.totalWorldIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Indian Tax" value={`₹ ${result.indianTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Foreign Tax Credit" value={`₹ ${result.foreignTaxCredit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} green />
+            <MiniStat label="Net Tax Payable" value={`₹ ${result.netTaxPayable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Relief under DTAA" value={`₹ ${result.reliefUnderDTAA.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} />
+            <MiniStat label="Applicable DTAA Rate" value={result.applicableDTAARate > 0 ? `${result.applicableDTAARate.toLocaleString('en-IN')}%` : 'N/A'} />
+          </div>
+          <div className="card-surface p-4 border border-white/10 text-sm text-secondary">File Form 67 before ITR filing to claim DTAA relief.</div>
+          {sourceCountry === 'UAE' && (
+            <div className="card-surface p-4 border border-warning/40 text-sm text-warning">UAE generally has no personal income tax; DTAA relief may not apply for all cases.</div>
+          )}
+        </div>
+      )}
+    />
+  );
+}
+
+function AuditChecklistCalc() {
+  type CategoryKey = "Internal Controls" | "Financial Reporting" | "Compliance" | "Operations" | "Risk";
+  type ChecklistQuestion = { id: string; category: CategoryKey; text: string; yes: boolean };
+
+  const [questions, setQuestions] = useState<ChecklistQuestion[]>([
+    { id: "ic-1", category: "Internal Controls", text: "Is there a proper authorization matrix?", yes: false },
+    { id: "ic-2", category: "Internal Controls", text: "Are bank reconciliations done monthly?", yes: false },
+    { id: "ic-3", category: "Internal Controls", text: "Is there segregation of duties?", yes: false },
+    { id: "ic-4", category: "Internal Controls", text: "Are physical verifications conducted annually?", yes: false },
+    { id: "fr-1", category: "Financial Reporting", text: "Are accounting policies disclosed?", yes: false },
+    { id: "fr-2", category: "Financial Reporting", text: "Is going concern assessment done?", yes: false },
+    { id: "fr-3", category: "Financial Reporting", text: "Are related party transactions disclosed?", yes: false },
+    { id: "fr-4", category: "Financial Reporting", text: "Are contingent liabilities properly disclosed?", yes: false },
+    { id: "co-1", category: "Compliance", text: "Is TDS deposited on time?", yes: false },
+    { id: "co-2", category: "Compliance", text: "Is GST filed monthly?", yes: false },
+    { id: "co-3", category: "Compliance", text: "Are ROC filings up to date?", yes: false },
+    { id: "co-4", category: "Compliance", text: "Is the company free of tax demands/notices?", yes: false },
+    { id: "op-1", category: "Operations", text: "Is stock verified against books?", yes: false },
+    { id: "op-2", category: "Operations", text: "Are fixed asset registers maintained?", yes: false },
+    { id: "op-3", category: "Operations", text: "Are loans and advances documented?", yes: false },
+    { id: "op-4", category: "Operations", text: "Is there a documented credit policy?", yes: false },
+    { id: "rk-1", category: "Risk", text: "Is there adequate insurance coverage?", yes: false },
+    { id: "rk-2", category: "Risk", text: "Are contracts reviewed by legal?", yes: false },
+    { id: "rk-3", category: "Risk", text: "Is there a fraud risk assessment?", yes: false },
+    { id: "rk-4", category: "Risk", text: "Are IT systems backed up regularly?", yes: false },
+  ]);
+  const [result, setResult] = useState({
+    yesCount: 0,
+    score: 0,
+    rating: "High Risk",
+    categoryScores: {
+      "Internal Controls": 0,
+      "Financial Reporting": 0,
+      Compliance: 0,
+      Operations: 0,
+      Risk: 0,
+    } as Record<CategoryKey, number>,
+    failedItems: [] as string[],
+  });
+
+  useEffect(() => {
+    const yesCount = questions.filter((q) => q.yes).length;
+    const score = (yesCount / 20) * 100;
+    const rating = score <= 40 ? "High Risk" : score <= 70 ? "Moderate" : score <= 90 ? "Good" : "Excellent";
+
+    const categories: CategoryKey[] = ["Internal Controls", "Financial Reporting", "Compliance", "Operations", "Risk"];
+    const categoryScores = categories.reduce((acc, category) => {
+      const catItems = questions.filter((q) => q.category === category);
+      const catYes = catItems.filter((q) => q.yes).length;
+      acc[category] = (catYes / 4) * 100;
+      return acc;
+    }, {
+      "Internal Controls": 0,
+      "Financial Reporting": 0,
+      Compliance: 0,
+      Operations: 0,
+      Risk: 0,
+    } as Record<CategoryKey, number>);
+
+    const failedItems = questions.filter((q) => !q.yes).map((q) => q.text);
+    setResult({ yesCount, score, rating, categoryScores, failedItems });
+  }, [questions]);
+
+  const toggleQuestion = (id: string) => {
+    setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, yes: !q.yes } : q)));
+  };
+
+  const categories: CategoryKey[] = ["Internal Controls", "Financial Reporting", "Compliance", "Operations", "Risk"];
+
+  return (
+    <CalculatorShell
+      title="Statutory Audit Checklist Score"
+      subtitle="20-point audit readiness checklist with risk rating"
+      inputPanel={(
+        <div className="card-surface p-5 space-y-4">
+          {categories.map((category) => (
+            <div key={category} className="space-y-2">
+              <div className="text-xs uppercase tracking-wide text-tertiary font-semibold">{category}</div>
+              {questions.filter((q) => q.category === category).map((q) => (
+                <button key={q.id} onClick={() => toggleQuestion(q.id)} className={cn("w-full text-left p-3 rounded-md border transition-all text-xs", q.yes ? "bg-gradient-orange text-white glow-orange border-transparent" : "border-white/10 text-secondary hover:text-white")}>
+                  {q.text}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      outputPanel={(
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <MiniStat label="Yes Responses" value={result.yesCount.toLocaleString('en-IN')} />
+            <MiniStat label="Score" value={`${result.score.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`} green={result.score >= 71} />
+            <MiniStat label="Rating" value={result.rating} green={result.rating === 'Excellent' || result.rating === 'Good'} />
+          </div>
+
+          <div className="card-surface p-4 text-sm text-secondary space-y-3">
+            {categories.map((category) => (
+              <div key={`score-${category}`} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span>{category}</span>
+                  <span className="text-white">{result.categoryScores[category].toLocaleString('en-IN', { maximumFractionDigits: 0 })}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className={cn("h-full rounded-full", result.categoryScores[category] > 75 ? "bg-success" : result.categoryScores[category] > 40 ? "bg-warning" : "bg-red-400")} style={{ width: `${Math.min(100, result.categoryScores[category])}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="card-surface p-5 overflow-hidden">
+            <div className="text-sm font-semibold mb-3">Action Points (Failed Items)</div>
+            <div className="overflow-x-auto -mx-5">
+              <table className="w-full text-xs">
+                <tbody>
+                  {result.failedItems.map((item, index) => (
+                    <tr key={`${item}-${index}`} className={index % 2 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2 text-secondary">{index + 1}. {item}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     />
